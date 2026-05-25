@@ -3,13 +3,16 @@ using UnityEngine;
 public class RangedWeapon : WeaponBase
 {
     [Header("远程属性")]
-    public GameObject bulletPrefab; // 子弹预制体（用简单的小圆球代替）
-    public Transform firePoint;     // 子弹发射点（若为空，默认在武器中心生成）
-    public float bulletSpeed = 15f; // 子弹飞行速度
+    public GameObject bulletPrefab;
+    public Transform firePoint;
+    public float bulletSpeed = 15f;
+
+    [Header("数值转化")]
+    [Tooltip("将基础射程数值(如350)转化为实际飞行距离(米)的系数，需与近战武器保持统一")]
+    public float rangeToDistanceRatio = 0.01f;
 
     protected override void Attack()
     {
-        // 调用基类方法重置冷却
         base.Attack();
         Shoot();
     }
@@ -27,20 +30,23 @@ public class RangedWeapon : WeaponBase
         // 生成子弹
         GameObject bullet = Instantiate(bulletPrefab, spawnPos, transform.rotation);
 
-        // 获取或添加刚体，赋予速度
+        // 优化1：绝对不要在战斗代码中 AddComponent！
         Rigidbody2D rb = bullet.GetComponent<Rigidbody2D>();
-        if (rb == null)
+        if (rb != null)
         {
-            rb = bullet.AddComponent<Rigidbody2D>();
-            rb.gravityScale = 0; // 俯视角不需要受重力影响
+            // 赋予速度
+            rb.velocity = transform.right * bulletSpeed;
+        }
+        else
+        {
+            Debug.LogError("严重错误：子弹预制体上缺少 Rigidbody2D 组件，请在 Prefab 面板中提前挂载！");
         }
 
-        // 假设武器朝向右方（X轴正方向），赋予速度
-        rb.velocity = transform.right * bulletSpeed;
+        // 优化2：统一 Range 的计算逻辑
+        float actualDistance = attackRange * rangeToDistanceRatio;
 
-        // 根据武器射程计算子弹存活时间：时间 = 距离 / 速度
-        // 这样子弹刚好在到达最大射程边界时消失，完美还原对远程武器的范围限制
-        float lifeTime = attackRange / bulletSpeed;
+        // 优化3：计算存活时间 (时间 = 实际物理距离 / 速度)
+        float lifeTime = actualDistance / bulletSpeed;
         Destroy(bullet, lifeTime);
     }
 }
