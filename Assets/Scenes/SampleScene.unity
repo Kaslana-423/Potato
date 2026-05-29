@@ -250,7 +250,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &108805284
 Transform:
   m_ObjectHideFlags: 0
@@ -583,7 +583,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &725946745
 Transform:
   m_ObjectHideFlags: 0
@@ -671,9 +671,24 @@ MonoBehaviour:
   rarity: 0
   attackCooldown: 1
   visualRotationOffset: -90
-  atkDuration: 2
-  recoilDistance: 0.2
-  sideRangeMultiplier: 0.3
+  atkDuration: 0.3
+  windupDuration: 0.06
+  sweepInDuration: 0.075
+  sweepOutDuration: 0.075
+  returnDuration: 0.09
+  recoilDistance: 0.19
+  sideRangeMultiplier: 0.12
+  sweepAngle: 139.1
+  centerDistanceMultiplier: 0.617
+  pathCurveAmount: 0.524
+  showSlashGizmos: 1
+  showAlternateSlashGizmos: 1
+  previewAimAngle: 0
+  gizmoSamplesPerSegment: 12
+  gizmoPointRadius: 0.04
+  gizmoRotationMarkerLength: 0.35
+  nextSlashGizmoColor: {r: 1, g: 0.25, b: 0.1, a: 1}
+  alternateSlashGizmoColor: {r: 0.1, g: 0.65, b: 1, a: 0.55}
 --- !u!1 &1072355487
 GameObject:
   m_ObjectHideFlags: 0
