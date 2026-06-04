@@ -11,10 +11,20 @@
 图标不是必填项。定义脚本通过 `IconResourcePath` 绑定 `Assets/Resources` 下的 Sprite；
 素材缺失时卡片会自动显示“武”或“道”占位符。
 
-## 快速测试
+## 打开和关闭商店
 
-进入 Play 模式。如果场景中没有 `ShopManager`，`ShopPrototypeBootstrap` 会创建临时商店 UI。
-点击“刷新”可重新抽取商品，点击卡片可查看详情。当前阶段暂不包含购买与背包逻辑。
+早期测试用的临时界面生成器已经移除，现在商店 UI 只由场景里的 `ShopManager` 控制。
+正式项目中把 `ShopManager` 挂到你的商店控制对象上，然后通过这些接口控制显隐：
+
+```csharp
+shopManager.OpenShop();
+shopManager.CloseShop();
+shopManager.ToggleShop();
+shopManager.SetShopOpen(true);
+```
+
+推荐让 `ShopManager` 挂在一个常驻激活的父物体上，把真正需要隐藏的商店面板拖到
+`Shop Window Root`。如果不拖，默认会控制 `ShopManager` 所在物体。
 
 ## 生成 ShopItem 预制体
 
@@ -49,7 +59,7 @@ ShopItem                 Image, Button, ShopOfferView
 3. 如果卡片需要横向排列，在容器上添加 `HorizontalLayoutGroup`。
 4. 将 `ShopItem.prefab` 拖到 `ShopManager > Shop Item Prefab`。
 5. 将刷新按钮命名为 `RefreshButton`，或拖到 `ShopManager > Refresh Button`。
-6. 关闭 `Build Prototype Ui When Views Missing`。
+6. `Start Open` 控制商店开局是否显示。
 
 `ShopManager` 会根据 `Offer Count` 自动实例化并复用卡片。
 

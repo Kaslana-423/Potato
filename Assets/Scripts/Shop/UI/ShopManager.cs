@@ -7,6 +7,12 @@ using UnityEngine.UI;
 
 public sealed class ShopManager : MonoBehaviour
 {
+    [Header("Window")]
+    [SerializeField] private GameObject shopWindowRoot;
+    [SerializeField] private CanvasGroup shopCanvasGroup;
+    [SerializeField] private bool startOpen = false;
+    [SerializeField] private bool refreshWhenOpenedIfEmpty = true;
+
     [Header("Offers")]
     [SerializeField, Min(1)] private int offerCount = 4;
     [SerializeField] private ShopOfferView shopItemPrefab = null;
@@ -20,16 +26,15 @@ public sealed class ShopManager : MonoBehaviour
     [SerializeField] private RelicBag relicBag;
     [SerializeField] private WeaponBag weaponBag;
 
-    [Header("Prototype")]
-    [SerializeField] private bool buildPrototypeUiWhenViewsMissing = true;
+    [Header("Refresh")]
     [SerializeField] private bool refreshOnStart = true;
 
     private ShopOfferView[] offerViews = Array.Empty<ShopOfferView>();
     private readonly List<ShopContentDefinition> currentOffers = new List<ShopContentDefinition>();
     private Button boundRefreshButton;
-    private bool prototypeUiBuilt;
 
     public IReadOnlyList<ShopContentDefinition> CurrentOffers => currentOffers;
+    public bool IsOpen { get; private set; }
 
     private void Awake()
     {
@@ -39,7 +44,9 @@ public sealed class ShopManager : MonoBehaviour
     private void Start()
     {
         EnsureUi();
-        if (refreshOnStart)
+        SetShopVisible(startOpen);
+
+        if (startOpen && refreshOnStart)
         {
             RefreshShop();
         }
@@ -56,6 +63,21 @@ public sealed class ShopManager : MonoBehaviour
     [ContextMenu("Auto Bind References")]
     public void AutoBindReferences()
     {
+        if (shopWindowRoot == null)
+        {
+            Transform window = FindDescendant("ShopWindow", "Shop Window", "ShopPanel", "Shop Panel");
+            shopWindowRoot = window != null ? window.gameObject : gameObject;
+        }
+
+        if (shopCanvasGroup == null && shopWindowRoot != null)
+        {
+            shopCanvasGroup = shopWindowRoot.GetComponent<CanvasGroup>();
+            if (shopCanvasGroup == null)
+            {
+                shopCanvasGroup = shopWindowRoot.AddComponent<CanvasGroup>();
+            }
+        }
+
         if (shopItemContainer == null)
         {
             shopItemContainer = FindDescendant("ShopItemContainer");
@@ -79,6 +101,39 @@ public sealed class ShopManager : MonoBehaviour
         if (weaponBag == null)
         {
             weaponBag = FindOrAddComponent<WeaponBag>("WeaponBag");
+        }
+    }
+
+    public void OpenShop()
+    {
+        SetShopOpen(true);
+    }
+
+    public void CloseShop()
+    {
+        SetShopOpen(false);
+    }
+
+    public void ToggleShop()
+    {
+        SetShopOpen(!IsOpen);
+    }
+
+    public void SetShopOpen(bool open)
+    {
+        if (open)
+        {
+            SetShopVisible(true);
+            EnsureUi();
+
+            if (refreshWhenOpenedIfEmpty && currentOffers.Count == 0)
+            {
+                RefreshShop();
+            }
+        }
+        else
+        {
+            SetShopVisible(false);
         }
     }
 
@@ -123,12 +178,6 @@ public sealed class ShopManager : MonoBehaviour
         AutoBindReferences();
         EnsureOfferViews();
 
-        if (!HasOfferViews() && buildPrototypeUiWhenViewsMissing && !prototypeUiBuilt)
-        {
-            prototypeUiBuilt = true;
-            ShopPrototypeUiFactory.Build(this);
-        }
-
         BindRefreshButton();
     }
 
@@ -155,6 +204,24 @@ public sealed class ShopManager : MonoBehaviour
     private bool HasOfferViews()
     {
         return offerViews != null && offerViews.Length > 0;
+    }
+
+    private void SetShopVisible(bool visible)
+    {
+        IsOpen = visible;
+
+        GameObject windowRoot = shopWindowRoot != null ? shopWindowRoot : gameObject;
+        if (shopCanvasGroup != null)
+        {
+            shopCanvasGroup.alpha = visible ? 1f : 0f;
+            shopCanvasGroup.interactable = visible;
+            shopCanvasGroup.blocksRaycasts = visible;
+        }
+
+        if (windowRoot != gameObject && windowRoot.activeSelf != visible)
+        {
+            windowRoot.SetActive(visible);
+        }
     }
 
     private void BindRefreshButton()
