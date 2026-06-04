@@ -1107,6 +1107,21 @@ PrefabInstance:
       propertyPath: m_AnchoredPosition.y
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 5579251782292912846, guid: cff1ec5a1db571f42a86f91dc07ee046,
+        type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Target
+      value: 
+      objectReference: {fileID: 1936535299}
+    - target: {fileID: 5579251782292912846, guid: cff1ec5a1db571f42a86f91dc07ee046,
+        type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_MethodName
+      value: CloseShop
+      objectReference: {fileID: 0}
+    - target: {fileID: 5579251782292912846, guid: cff1ec5a1db571f42a86f91dc07ee046,
+        type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_TargetAssemblyTypeName
+      value: ShopManager, Assembly-CSharp
+      objectReference: {fileID: 0}
     - target: {fileID: 5761833863122804837, guid: cff1ec5a1db571f42a86f91dc07ee046,
         type: 3}
       propertyPath: m_AnchorMax.y
@@ -2182,22 +2197,22 @@ MonoBehaviour:
   attackPower: 10
   attackRange: 3
   rarity: 0
-  attackCooldown: 1
+  attackCooldown: 2
   visualRotationOffset: -90
-  atkDuration: 0.3
-  windupDuration: 0.06
-  sweepInDuration: 0.075
-  sweepOutDuration: 0.075
-  returnDuration: 0.09
-  recoilDistance: 0.19
-  sideRangeMultiplier: 0.12
+  atkDuration: 0.45
+  windupDuration: 0.09
+  sweepInDuration: 0.1125
+  sweepOutDuration: 0.1125
+  returnDuration: 0.135
+  recoilDistance: 0.25
+  sideRangeMultiplier: 0.21
   sweepAngle: 139.1
-  centerDistanceMultiplier: 0.617
-  pathCurveAmount: 0.524
+  centerDistanceMultiplier: 0.41
+  pathCurveAmount: 1
   showSlashGizmos: 1
   showAlternateSlashGizmos: 1
   previewAimAngle: 0
-  gizmoSamplesPerSegment: 12
+  gizmoSamplesPerSegment: 21
   gizmoPointRadius: 0.04
   gizmoRotationMarkerLength: 0.35
   nextSlashGizmoColor: {r: 1, g: 0.25, b: 0.1, a: 1}
@@ -2458,8 +2473,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 303ba6b0eb716e04d88b64cb28985dfd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  enemyId: enemy.custom
+  displayName: Custom Enemy
+  category: 0
+  behaviorDescription: 
   maxHealth: 100
   currentHealth: 0
+  damage: 1
+  armor: 0
+  knockbackResistance: 0
+  tableSpeed: 200
+  tableSpeedToUnityUnits: 0.01
+  materialsDropped: 1
+  consumableDropChance: 0.01
+  lootCrateDropChance: 0.01
 --- !u!70 &1168113306
 CapsuleCollider2D:
   m_ObjectHideFlags: 0
@@ -7288,8 +7315,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 303ba6b0eb716e04d88b64cb28985dfd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  enemyId: enemy.custom
+  displayName: Custom Enemy
+  category: 0
+  behaviorDescription: 
   maxHealth: 100
   currentHealth: 0
+  damage: 1
+  armor: 0
+  knockbackResistance: 0
+  tableSpeed: 200
+  tableSpeedToUnityUnits: 0.01
+  materialsDropped: 1
+  consumableDropChance: 0.01
+  lootCrateDropChance: 0.01
 --- !u!70 &1705973979
 CapsuleCollider2D:
   m_ObjectHideFlags: 0
@@ -7509,8 +7548,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 303ba6b0eb716e04d88b64cb28985dfd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  enemyId: enemy.custom
+  displayName: Custom Enemy
+  category: 0
+  behaviorDescription: 
   maxHealth: 100
   currentHealth: 0
+  damage: 1
+  armor: 0
+  knockbackResistance: 0
+  tableSpeed: 200
+  tableSpeedToUnityUnits: 0.01
+  materialsDropped: 1
+  consumableDropChance: 0.01
+  lootCrateDropChance: 0.01
 --- !u!70 &1802919218
 CapsuleCollider2D:
   m_ObjectHideFlags: 0
@@ -7725,7 +7776,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   shopWindowRoot: {fileID: 1048709892}
   shopCanvasGroup: {fileID: 0}
-  startOpen: 1
+  startOpen: 0
   refreshWhenOpenedIfEmpty: 1
   offerCount: 4
   shopItemPrefab: {fileID: 2332577515472064273, guid: 7464a25d68bc77d4d8f4e244469b0321,
