@@ -48,6 +48,12 @@ public sealed class ShopOfferView : MonoBehaviour
             background = GetComponent<Image>();
         }
 
+        if (IconPanel == null)
+        {
+            Transform iconPanel = FindDescendant("IconPanel");
+            IconPanel = iconPanel != null ? iconPanel.gameObject : null;
+        }
+
         if (background == null)
         {
             background = FindComponent<Image>("Background");
@@ -275,6 +281,11 @@ public sealed class ShopOfferView : MonoBehaviour
 
     private void SetCardContentVisible(bool visible)
     {
+        if (IconPanel != null)
+        {
+            IconPanel.SetActive(visible);
+        }
+
         SetGameObjectActive(icon, visible);
         SetGameObjectActive(iconPlaceholder, visible);
         SetGameObjectActive(nameText, visible);
@@ -283,7 +294,6 @@ public sealed class ShopOfferView : MonoBehaviour
         SetGameObjectActive(descriptionText, visible);
         SetGameObjectActive(statsText, visible);
         SetGameObjectActive(priceText, visible);
-        IconPanel.SetActive(visible);
         if (buyButton != null)
         {
             buyButton.gameObject.SetActive(visible);

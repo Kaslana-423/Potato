@@ -2226,6 +2226,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b6c6e1b9c94c5af418bb50cc52e203fc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!1 &1048709892 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8813083723474049030, guid: cff1ec5a1db571f42a86f91dc07ee046,
+    type: 3}
+  m_PrefabInstance: {fileID: 462978518}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1072355487
 GameObject:
   m_ObjectHideFlags: 0
@@ -7717,6 +7723,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3170f674134fb3646b5a97cb2b8ac605, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  shopWindowRoot: {fileID: 1048709892}
+  shopCanvasGroup: {fileID: 0}
+  startOpen: 1
+  refreshWhenOpenedIfEmpty: 1
   offerCount: 4
   shopItemPrefab: {fileID: 2332577515472064273, guid: 7464a25d68bc77d4d8f4e244469b0321,
     type: 3}
@@ -7725,7 +7735,6 @@ MonoBehaviour:
   statusText: {fileID: 0}
   relicBag: {fileID: 1038682043}
   weaponBag: {fileID: 987940478}
-  buildPrototypeUiWhenViewsMissing: 1
   refreshOnStart: 1
 --- !u!224 &194524121548627138
 RectTransform:
