@@ -1246,7 +1246,7 @@ PrefabInstance:
         type: 3}
       propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Target
       value: 
-      objectReference: {fileID: 1936535299}
+      objectReference: {fileID: 0}
     - target: {fileID: 5579251782292912846, guid: cff1ec5a1db571f42a86f91dc07ee046,
         type: 3}
       propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_MethodName
@@ -1965,10 +1965,10 @@ PrefabInstance:
     - {fileID: 9052948019232735910, guid: cff1ec5a1db571f42a86f91dc07ee046, type: 3}
     m_AddedGameObjects: []
     m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 1905463776551546049, guid: cff1ec5a1db571f42a86f91dc07ee046,
+    - targetCorrespondingSourceObject: {fileID: 8813083723474049030, guid: cff1ec5a1db571f42a86f91dc07ee046,
         type: 3}
       insertIndex: -1
-      addedObject: {fileID: 1936535299}
+      addedObject: {fileID: 1048709895}
   m_SourcePrefab: {fileID: 100100000, guid: cff1ec5a1db571f42a86f91dc07ee046, type: 3}
 --- !u!1 &502011872
 GameObject:
@@ -2267,7 +2267,7 @@ MonoBehaviour:
   currentWave: 1
   spawnOnStart: 1
   clearAliveEnemiesWhenLevelEnds: 1
-  shopManager: {fileID: 1936535299}
+  shopManager: {fileID: 1048709895}
   shopRoot: {fileID: 1048709892}
   shopExitButton: {fileID: 1675404446}
   shopOpenDelaySeconds: 2
@@ -2706,8 +2706,8 @@ MonoBehaviour:
   spawnRadius: 12
   restrictSpawnToMapBounds: 1
   mapBoundsCollider: {fileID: 0}
-  spawnAreaCenter: {x: 0.45, y: 1.96}
-  spawnAreaSize: {x: 22.4, y: 21.2}
+  spawnAreaCenter: {x: 0.62, y: 2.12}
+  spawnAreaSize: {x: 18.3, y: 17.1}
   mapBoundsPadding: 0.5
   spawnPositionAttempts: 12
   spawnWarningPrefab: {fileID: 777938047}
@@ -2946,7 +2946,7 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1936535299}
+      - m_Target: {fileID: 0}
         m_TargetAssemblyTypeName: ShopManager, Assembly-CSharp
         m_MethodName: OpenShop
         m_Mode: 1
@@ -3026,6 +3026,31 @@ GameObject:
     type: 3}
   m_PrefabInstance: {fileID: 462978518}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &1048709895
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1048709892}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3170f674134fb3646b5a97cb2b8ac605, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  shopWindowRoot: {fileID: 1048709892}
+  shopCanvasGroup: {fileID: 0}
+  startOpen: 0
+  refreshWhenOpenedIfEmpty: 1
+  offerCount: 4
+  shopItemPrefab: {fileID: 2332577515472064273, guid: 7464a25d68bc77d4d8f4e244469b0321,
+    type: 3}
+  shopItemContainer: {fileID: 1936535295}
+  refreshButton: {fileID: 1174332303}
+  statusText: {fileID: 0}
+  relicBag: {fileID: 1038682043}
+  weaponBag: {fileID: 987940478}
+  refreshOnStart: 1
 --- !u!1 &1072355487
 GameObject:
   m_ObjectHideFlags: 0
@@ -8145,43 +8170,12 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
---- !u!1 &1936535294 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 1905463776551546049, guid: cff1ec5a1db571f42a86f91dc07ee046,
-    type: 3}
-  m_PrefabInstance: {fileID: 462978518}
-  m_PrefabAsset: {fileID: 0}
 --- !u!224 &1936535295 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 6849115406369205687, guid: cff1ec5a1db571f42a86f91dc07ee046,
     type: 3}
   m_PrefabInstance: {fileID: 462978518}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &1936535299
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1936535294}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3170f674134fb3646b5a97cb2b8ac605, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  shopWindowRoot: {fileID: 1048709892}
-  shopCanvasGroup: {fileID: 0}
-  startOpen: 0
-  refreshWhenOpenedIfEmpty: 1
-  offerCount: 4
-  shopItemPrefab: {fileID: 2332577515472064273, guid: 7464a25d68bc77d4d8f4e244469b0321,
-    type: 3}
-  shopItemContainer: {fileID: 1936535295}
-  refreshButton: {fileID: 1174332303}
-  statusText: {fileID: 0}
-  relicBag: {fileID: 1038682043}
-  weaponBag: {fileID: 987940478}
-  refreshOnStart: 1
 --- !u!224 &194524121548627138
 RectTransform:
   m_ObjectHideFlags: 0
