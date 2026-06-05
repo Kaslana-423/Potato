@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.UI;
 
 public enum EnemySpawnBatchMode
 {
@@ -83,7 +84,16 @@ public sealed class EnemySpawner : MonoBehaviour
     [Header("Wave")]
     [SerializeField, Min(1)] private int currentWave = 1;
     [SerializeField] private bool spawnOnStart = true;
-    [SerializeField] private bool advanceWaveWhenComplete = false;
+    [SerializeField] private bool clearAliveEnemiesWhenLevelEnds = true;
+
+    [Header("Shop Flow")]
+    [SerializeField] private ShopManager shopManager;
+    [SerializeField] private GameObject shopRoot;
+    [SerializeField] private Button shopExitButton;
+    [SerializeField, Min(0f)] private float shopOpenDelaySeconds = 2f;
+    [SerializeField, Min(0f)] private float nextLevelDelaySeconds = 1f;
+    [SerializeField] private bool hideShopOnStart = true;
+    [SerializeField] private bool refreshShopWhenOpened = true;
 
     [Header("Wave Plan")]
     [SerializeField] private bool useConfiguredWaves = true;
@@ -104,12 +114,30 @@ public sealed class EnemySpawner : MonoBehaviour
     [SerializeField] private Transform playerTarget;
     [SerializeField, Min(0f)] private float spawnRadius = 12f;
 
+    [Header("Map Bounds")]
+    [SerializeField] private bool restrictSpawnToMapBounds = true;
+    [SerializeField] private Collider2D mapBoundsCollider;
+    [SerializeField] private Vector2 spawnAreaCenter = Vector2.zero;
+    [SerializeField] private Vector2 spawnAreaSize = new Vector2(32f, 18f);
+    [SerializeField, Min(0f)] private float mapBoundsPadding = 0.5f;
+    [SerializeField, Min(1)] private int spawnPositionAttempts = 12;
+
+    [Header("Spawn Warning")]
+    [SerializeField] private EnemySpawnWarning spawnWarningPrefab;
+    [SerializeField, Min(0f)] private float spawnWarningSeconds = 0.65f;
+    [SerializeField, Min(0.1f)] private float spawnWarningRadius = 0.75f;
+
     private readonly List<EnemyBase> aliveEnemies = new List<EnemyBase>();
     private Coroutine spawnRoutine;
+    private Coroutine nextLevelRoutine;
+    private Button boundShopExitButton;
+    private bool levelRunning;
+    private int levelRunId;
     private static Sprite fallbackSprite;
 
     public int CurrentWave => currentWave;
     public int AliveCount => aliveEnemies.Count(enemy => enemy != null);
+    public bool IsLevelRunning => levelRunning;
 
     private void Reset()
     {
@@ -122,12 +150,27 @@ public sealed class EnemySpawner : MonoBehaviour
         fallbackSpawnInterval = Mathf.Max(0.05f, fallbackSpawnInterval);
         fallbackEnemiesPerSpawn = Mathf.Max(1, fallbackEnemiesPerSpawn);
         spawnRadius = Mathf.Max(0f, spawnRadius);
+        spawnAreaSize = new Vector2(Mathf.Max(0.1f, spawnAreaSize.x), Mathf.Max(0.1f, spawnAreaSize.y));
+        mapBoundsPadding = Mathf.Max(0f, mapBoundsPadding);
+        spawnPositionAttempts = Mathf.Max(1, spawnPositionAttempts);
+        shopOpenDelaySeconds = Mathf.Max(0f, shopOpenDelaySeconds);
+        nextLevelDelaySeconds = Mathf.Max(0f, nextLevelDelaySeconds);
+        spawnWarningSeconds = Mathf.Max(0f, spawnWarningSeconds);
+        spawnWarningRadius = Mathf.Max(0.1f, spawnWarningRadius);
         EnsureDefaultWaveSettings();
         ValidateWaveSettings();
     }
 
     private void Start()
     {
+        AutoBindFlowReferences();
+        BindShopExitButton();
+
+        if (hideShopOnStart)
+        {
+            SetShopVisible(false);
+        }
+
         if (playerTarget == null)
         {
             FindPlayerTarget();
@@ -142,22 +185,32 @@ public sealed class EnemySpawner : MonoBehaviour
     private void OnDisable()
     {
         StopSpawning();
+        UnbindShopExitButton();
     }
 
     [ContextMenu("Start Spawning")]
     public void StartSpawning()
     {
         StopSpawning();
+        levelRunId++;
+        levelRunning = true;
         spawnRoutine = StartCoroutine(SpawnWaveLoop());
     }
 
     [ContextMenu("Stop Spawning")]
     public void StopSpawning()
     {
+        levelRunning = false;
         if (spawnRoutine != null)
         {
             StopCoroutine(spawnRoutine);
             spawnRoutine = null;
+        }
+
+        if (nextLevelRoutine != null)
+        {
+            StopCoroutine(nextLevelRoutine);
+            nextLevelRoutine = null;
         }
     }
 
@@ -169,7 +222,18 @@ public sealed class EnemySpawner : MonoBehaviour
     public void StartWave(int wave)
     {
         SetWave(wave);
+        SetShopVisible(false);
         StartSpawning();
+    }
+
+    public void ExitShopAndStartNextLevel()
+    {
+        if (nextLevelRoutine != null)
+        {
+            StopCoroutine(nextLevelRoutine);
+        }
+
+        nextLevelRoutine = StartCoroutine(ExitShopAndStartNextLevelRoutine());
     }
 
     public void SpawnOne()
@@ -183,9 +247,11 @@ public sealed class EnemySpawner : MonoBehaviour
 
     private IEnumerator SpawnWaveLoop()
     {
+        int runId = levelRunId;
         List<EnemySpawnRuntimeState> states = BuildSpawnStates(currentWave);
         if (states.Count == 0)
         {
+            levelRunning = false;
             spawnRoutine = null;
             yield break;
         }
@@ -207,17 +273,23 @@ public sealed class EnemySpawner : MonoBehaviour
             }
 
             float progress = waveDuration <= 0f ? 1f : Mathf.Clamp01(elapsed / waveDuration);
-            SpawnBatch(readyState);
+            ScheduleSpawnBatch(readyState, runId);
             readyState.nextSpawnTime = elapsed + GetSpawnInterval(readyState, progress);
 
             yield return null;
         }
 
+        levelRunning = false;
         spawnRoutine = null;
-        if (advanceWaveWhenComplete)
+        if (clearAliveEnemiesWhenLevelEnds)
         {
-            currentWave++;
-            StartSpawning();
+            DestroyAliveEnemies();
+        }
+
+        yield return new WaitForSeconds(shopOpenDelaySeconds);
+        if (runId == levelRunId)
+        {
+            OpenShop();
         }
     }
 
@@ -275,7 +347,7 @@ public sealed class EnemySpawner : MonoBehaviour
         return states;
     }
 
-    private int SpawnBatch(EnemySpawnRuntimeState state)
+    private int ScheduleSpawnBatch(EnemySpawnRuntimeState state, int runId)
     {
         if (state == null)
         {
@@ -288,17 +360,56 @@ public sealed class EnemySpawner : MonoBehaviour
             : UnityEngine.Random.Range(state.rule.singleBatchMin, state.rule.singleBatchMax + 1);
 
         Vector3 center = GetSpawnPosition();
+        List<Vector3> positions = spawnGroup
+            ? BuildGroupSpawnPositions(center, batchSize, state.rule.groupSpreadRadius)
+            : BuildSingleSpawnPositions(center, batchSize);
 
-        for (int index = 0; index < batchSize; index++)
+        for (int index = 0; index < positions.Count; index++)
         {
-            Vector3 position = spawnGroup
-                ? center + (Vector3)(UnityEngine.Random.insideUnitCircle * state.rule.groupSpreadRadius)
-                : center;
-
-            SpawnEnemy(state.definition, position);
+            ShowSpawnWarning(positions[index]);
         }
 
+        StartCoroutine(SpawnAfterWarning(state.definition, positions, runId));
         return batchSize;
+    }
+
+    private List<Vector3> BuildSingleSpawnPositions(Vector3 center, int batchSize)
+    {
+        var positions = new List<Vector3>(batchSize);
+        Vector3 clampedCenter = ClampToMapBounds(center);
+        for (int index = 0; index < batchSize; index++)
+        {
+            positions.Add(clampedCenter);
+        }
+
+        return positions;
+    }
+
+    private List<Vector3> BuildGroupSpawnPositions(Vector3 center, int batchSize, float spreadRadius)
+    {
+        var positions = new List<Vector3>(batchSize);
+        if (batchSize <= 0)
+        {
+            return positions;
+        }
+
+        if (batchSize == 1 || spreadRadius <= 0f)
+        {
+            positions.Add(ClampToMapBounds(center));
+            return positions;
+        }
+
+        float angleOffset = UnityEngine.Random.Range(0f, 360f);
+        for (int index = 0; index < batchSize; index++)
+        {
+            float angle = angleOffset + (360f * index / batchSize);
+            float radians = angle * Mathf.Deg2Rad;
+            float ringRadius = spreadRadius * UnityEngine.Random.Range(0.65f, 1f);
+            Vector3 offset = new Vector3(Mathf.Cos(radians), Mathf.Sin(radians), 0f) * ringRadius;
+            positions.Add(ClampToMapBounds(center + offset));
+        }
+
+        return positions;
     }
 
     private bool ShouldSpawnGroup(EnemyWaveEnemySpawnRule rule)
@@ -312,6 +423,40 @@ public sealed class EnemySpawner : MonoBehaviour
             default:
                 return false;
         }
+    }
+
+    private IEnumerator SpawnAfterWarning(EnemyDefinition definition, IReadOnlyList<Vector3> positions, int runId)
+    {
+        if (spawnWarningSeconds > 0f)
+        {
+            yield return new WaitForSeconds(spawnWarningSeconds);
+        }
+
+        if (!levelRunning || runId != levelRunId)
+        {
+            yield break;
+        }
+
+        for (int index = 0; index < positions.Count; index++)
+        {
+            SpawnEnemy(definition, positions[index]);
+        }
+    }
+
+    private void ShowSpawnWarning(Vector3 position)
+    {
+        EnemySpawnWarning warning = spawnWarningPrefab != null
+            ? Instantiate(spawnWarningPrefab, position, Quaternion.identity)
+            : CreateDefaultSpawnWarning(position);
+
+        warning.Play(position, spawnWarningSeconds, spawnWarningRadius);
+    }
+
+    private EnemySpawnWarning CreateDefaultSpawnWarning(Vector3 position)
+    {
+        GameObject warningObject = new GameObject("Enemy Spawn Warning");
+        warningObject.transform.position = position;
+        return warningObject.AddComponent<EnemySpawnWarning>();
     }
 
     private float GetSpawnInterval(EnemySpawnRuntimeState state, float waveProgress)
@@ -419,6 +564,132 @@ public sealed class EnemySpawner : MonoBehaviour
         return eligibleEnemies[UnityEngine.Random.Range(0, eligibleEnemies.Count)];
     }
 
+    private IEnumerator ExitShopAndStartNextLevelRoutine()
+    {
+        SetShopVisible(false);
+        if (nextLevelDelaySeconds > 0f)
+        {
+            yield return new WaitForSeconds(nextLevelDelaySeconds);
+        }
+
+        currentWave++;
+        nextLevelRoutine = null;
+        StartSpawning();
+    }
+
+    private void OpenShop()
+    {
+        AutoBindFlowReferences();
+        SetShopVisible(true);
+
+        if (refreshShopWhenOpened && shopManager != null)
+        {
+            shopManager.RefreshShop();
+        }
+
+        BindShopExitButton();
+    }
+
+    private void SetShopVisible(bool visible)
+    {
+        if (shopRoot != null && shopRoot.activeSelf != visible)
+        {
+            shopRoot.SetActive(visible);
+        }
+
+        if (shopManager != null)
+        {
+            shopManager.SetShopOpen(visible);
+            return;
+        }
+    }
+
+    private void AutoBindFlowReferences()
+    {
+        if (shopManager == null)
+        {
+            shopManager = FindObjectOfType<ShopManager>();
+        }
+
+        if (shopRoot == null && shopManager != null)
+        {
+            Canvas canvas = shopManager.GetComponentInChildren<Canvas>(true);
+            if (canvas != null && canvas.gameObject != shopManager.gameObject)
+            {
+                shopRoot = canvas.gameObject;
+            }
+        }
+
+        if (shopExitButton == null && shopRoot != null)
+        {
+            shopExitButton = FindButtonInChildren(
+                shopRoot.transform,
+                "NextWaveButton",
+                "Next Wave Button",
+                "StartNextWaveButton",
+                "Start Next Wave Button",
+                "ExitShopButton",
+                "Exit Shop Button");
+        }
+
+        if (shopExitButton == null && shopManager != null)
+        {
+            shopExitButton = FindButtonInChildren(
+                shopManager.transform,
+                "NextWaveButton",
+                "Next Wave Button",
+                "StartNextWaveButton",
+                "Start Next Wave Button",
+                "ExitShopButton",
+                "Exit Shop Button");
+        }
+    }
+
+    private void BindShopExitButton()
+    {
+        if (boundShopExitButton == shopExitButton)
+        {
+            return;
+        }
+
+        UnbindShopExitButton();
+        boundShopExitButton = shopExitButton;
+        if (boundShopExitButton != null)
+        {
+            boundShopExitButton.onClick.AddListener(ExitShopAndStartNextLevel);
+        }
+    }
+
+    private void UnbindShopExitButton()
+    {
+        if (boundShopExitButton != null)
+        {
+            boundShopExitButton.onClick.RemoveListener(ExitShopAndStartNextLevel);
+            boundShopExitButton = null;
+        }
+    }
+
+    private static Button FindButtonInChildren(Transform root, params string[] names)
+    {
+        if (root == null)
+        {
+            return null;
+        }
+
+        foreach (Transform child in root.GetComponentsInChildren<Transform>(true))
+        {
+            foreach (string objectName in names)
+            {
+                if (child.name == objectName)
+                {
+                    return child.GetComponent<Button>();
+                }
+            }
+        }
+
+        return null;
+    }
+
     private void SpawnEnemy(EnemyDefinition definition, Vector3 position)
     {
         EnemyBase enemy = CreateEnemy(definition, position);
@@ -484,13 +755,101 @@ public sealed class EnemySpawner : MonoBehaviour
     private Vector3 GetSpawnPosition()
     {
         Vector3 center = playerTarget != null ? playerTarget.position : transform.position;
-        Vector2 direction = UnityEngine.Random.insideUnitCircle.normalized;
-        if (direction.sqrMagnitude <= 0.0001f)
+        for (int attempt = 0; attempt < spawnPositionAttempts; attempt++)
         {
-            direction = Vector2.right;
+            Vector2 direction = UnityEngine.Random.insideUnitCircle.normalized;
+            if (direction.sqrMagnitude <= 0.0001f)
+            {
+                direction = Vector2.right;
+            }
+
+            Vector3 candidate = center + (Vector3)(direction * spawnRadius);
+            if (!restrictSpawnToMapBounds || IsInsideMapBounds(candidate))
+            {
+                return candidate;
+            }
         }
 
-        return center + (Vector3)(direction * spawnRadius);
+        Vector2 fallbackDirection = UnityEngine.Random.insideUnitCircle.normalized;
+        if (fallbackDirection.sqrMagnitude <= 0.0001f)
+        {
+            fallbackDirection = Vector2.right;
+        }
+
+        return ClampToMapBounds(center + (Vector3)(fallbackDirection * spawnRadius));
+    }
+
+    private bool IsInsideMapBounds(Vector3 position)
+    {
+        if (!restrictSpawnToMapBounds)
+        {
+            return true;
+        }
+
+        Rect bounds = GetMapBoundsRect();
+        return position.x >= bounds.xMin
+            && position.x <= bounds.xMax
+            && position.y >= bounds.yMin
+            && position.y <= bounds.yMax;
+    }
+
+    private Vector3 ClampToMapBounds(Vector3 position)
+    {
+        if (!restrictSpawnToMapBounds)
+        {
+            return position;
+        }
+
+        Rect bounds = GetMapBoundsRect();
+        position.x = Mathf.Clamp(position.x, bounds.xMin, bounds.xMax);
+        position.y = Mathf.Clamp(position.y, bounds.yMin, bounds.yMax);
+        return position;
+    }
+
+    private Rect GetMapBoundsRect()
+    {
+        if (mapBoundsCollider != null)
+        {
+            Bounds bounds = mapBoundsCollider.bounds;
+            float minX = bounds.min.x + mapBoundsPadding;
+            float minY = bounds.min.y + mapBoundsPadding;
+            float maxX = bounds.max.x - mapBoundsPadding;
+            float maxY = bounds.max.y - mapBoundsPadding;
+            if (maxX < minX)
+            {
+                float centerX = bounds.center.x;
+                minX = centerX;
+                maxX = centerX;
+            }
+
+            if (maxY < minY)
+            {
+                float centerY = bounds.center.y;
+                minY = centerY;
+                maxY = centerY;
+            }
+
+            return Rect.MinMaxRect(minX, minY, maxX, maxY);
+        }
+
+        Vector2 halfSize = spawnAreaSize * 0.5f;
+        float xMin = spawnAreaCenter.x - halfSize.x + mapBoundsPadding;
+        float yMin = spawnAreaCenter.y - halfSize.y + mapBoundsPadding;
+        float xMax = spawnAreaCenter.x + halfSize.x - mapBoundsPadding;
+        float yMax = spawnAreaCenter.y + halfSize.y - mapBoundsPadding;
+        if (xMax < xMin)
+        {
+            xMin = spawnAreaCenter.x;
+            xMax = spawnAreaCenter.x;
+        }
+
+        if (yMax < yMin)
+        {
+            yMin = spawnAreaCenter.y;
+            yMax = spawnAreaCenter.y;
+        }
+
+        return Rect.MinMaxRect(xMin, yMin, xMax, yMax);
     }
 
     private void TrimDeadEnemies()
@@ -502,6 +861,20 @@ public sealed class EnemySpawner : MonoBehaviour
                 aliveEnemies.RemoveAt(index);
             }
         }
+    }
+
+    private void DestroyAliveEnemies()
+    {
+        for (int index = aliveEnemies.Count - 1; index >= 0; index--)
+        {
+            EnemyBase enemy = aliveEnemies[index];
+            if (enemy != null)
+            {
+                Destroy(enemy.gameObject);
+            }
+        }
+
+        aliveEnemies.Clear();
     }
 
     private void FindPlayerTarget()
@@ -679,6 +1052,21 @@ public sealed class EnemySpawner : MonoBehaviour
                 rule.groupSpreadRadius = Mathf.Max(0f, rule.groupSpreadRadius);
             }
         }
+    }
+
+    private void OnDrawGizmosSelected()
+    {
+        if (!restrictSpawnToMapBounds)
+        {
+            return;
+        }
+
+        Rect bounds = GetMapBoundsRect();
+        Vector3 center = new Vector3(bounds.center.x, bounds.center.y, 0f);
+        Vector3 size = new Vector3(bounds.width, bounds.height, 0f);
+
+        Gizmos.color = new Color(0.2f, 0.85f, 0.35f, 0.9f);
+        Gizmos.DrawWireCube(center, size);
     }
 
     private static float EvaluateMultiplier(AnimationCurve curve, float value)
