@@ -128,6 +128,7 @@ public sealed class ShopManager : MonoBehaviour
 
             if (refreshWhenOpenedIfEmpty && currentOffers.Count == 0)
             {
+                Debug.Log(33);
                 RefreshShop();
             }
         }

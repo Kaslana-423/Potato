@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 public class EnemyBase : MonoBehaviour
@@ -25,6 +26,8 @@ public class EnemyBase : MonoBehaviour
     [SerializeField, Range(0f, 1f)] private float lootCrateDropChance = 0.01f;
 
     private bool initialized;
+
+    public event Action<EnemyBase> Died;
 
     public string EnemyId => enemyId;
     public string DisplayName => displayName;
@@ -82,7 +85,11 @@ public class EnemyBase : MonoBehaviour
 
     protected virtual void Die()
     {
-        Destroy(gameObject);
+        Died?.Invoke(this);
+        if (gameObject.activeSelf)
+        {
+            Destroy(gameObject);
+        }
     }
 
     public Vector3 GetPosition()

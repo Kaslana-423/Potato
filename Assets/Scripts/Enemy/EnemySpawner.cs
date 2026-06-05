@@ -5,80 +5,6 @@ using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
 
-public enum EnemySpawnBatchMode
-{
-    Single,
-    Group,
-    Mixed
-}
-
-[Serializable]
-public sealed class EnemyPrefabBinding
-{
-    [Tooltip("Use an id from EnemyCatalog, for example enemy.baby_alien or enemy.chaser.")]
-    public string enemyId = "enemy.baby_alien";
-
-    public EnemyBase prefab;
-}
-
-[Serializable]
-public sealed class EnemyWaveEnemySpawnRule
-{
-    [Tooltip("Use an id from EnemyCatalog, for example enemy.baby_alien or enemy.chaser.")]
-    public string enemyId = "enemy.baby_alien";
-
-    [Header("Frequency")]
-    [Tooltip("Base seconds between this enemy's spawn batches.")]
-    [Min(0.05f)] public float baseSpawnInterval = 1f;
-
-    [Tooltip("X = wave offset from this wave config start, Y = interval multiplier.")]
-    public AnimationCurve intervalMultiplierByWaveOffset = AnimationCurve.Linear(0f, 1f, 10f, 0.75f);
-
-    [Tooltip("X = progress inside the current wave from 0 to 1, Y = interval multiplier.")]
-    public AnimationCurve intervalMultiplierOverWaveProgress = AnimationCurve.EaseInOut(0f, 1f, 1f, 0.5f);
-
-    [Tooltip("Fastest allowed interval for this enemy.")]
-    [Min(0.05f)] public float minimumSpawnInterval = 0.2f;
-
-    [Header("Batch")]
-    public EnemySpawnBatchMode batchMode = EnemySpawnBatchMode.Single;
-
-    [Tooltip("Used by Single and Mixed modes.")]
-    [Min(1)] public int singleBatchMin = 1;
-
-    [Tooltip("Used by Single and Mixed modes.")]
-    [Min(1)] public int singleBatchMax = 1;
-
-    [Tooltip("Used by Group and Mixed modes.")]
-    [Min(1)] public int groupBatchMin = 3;
-
-    [Tooltip("Used by Group and Mixed modes.")]
-    [Min(1)] public int groupBatchMax = 6;
-
-    [Tooltip("Used only by Mixed mode.")]
-    [Range(0f, 1f)] public float groupChance = 0.35f;
-
-    [Tooltip("How far members of the same group spread around the chosen spawn point.")]
-    [Min(0f)] public float groupSpreadRadius = 1.2f;
-}
-
-[Serializable]
-public sealed class EnemyWaveSpawnSettings
-{
-    [Tooltip("This config is used from this wave until a later config takes over.")]
-    [Min(1)] public int startWave = 1;
-
-    [Header("Duration")]
-    [Tooltip("Use the duration from enemies.xlsx Waves sheet through EnemyCatalog.")]
-    public bool useCatalogWaveDuration = true;
-
-    [Tooltip("Used only when Use Catalog Wave Duration is false.")]
-    [Min(1f)] public float waveDurationSeconds = 60f;
-
-    [Header("Enemy Rules")]
-    public List<EnemyWaveEnemySpawnRule> enemyRules = new List<EnemyWaveEnemySpawnRule>();
-}
-
 public sealed class EnemySpawner : MonoBehaviour
 {
     [Header("Wave")]
@@ -109,6 +35,7 @@ public sealed class EnemySpawner : MonoBehaviour
     [SerializeField] private bool includeBosses = false;
 
     [Header("Spawn")]
+    [SerializeField] private EnemySpawnPool spawnPool;
     [SerializeField] private EnemyBase defaultEnemyPrefab;
     [SerializeField] private List<EnemyPrefabBinding> enemyPrefabs = new List<EnemyPrefabBinding>();
     [SerializeField] private Transform playerTarget;
@@ -133,7 +60,6 @@ public sealed class EnemySpawner : MonoBehaviour
     private Button boundShopExitButton;
     private bool levelRunning;
     private int levelRunId;
-    private static Sprite fallbackSprite;
 
     public int CurrentWave => currentWave;
     public int AliveCount => aliveEnemies.Count(enemy => enemy != null);
@@ -163,9 +89,10 @@ public sealed class EnemySpawner : MonoBehaviour
 
     private void Start()
     {
+        EnsureSpawnPool();
         AutoBindFlowReferences();
         BindShopExitButton();
-
+        // shopManager.OpenShop();
         if (hideShopOnStart)
         {
             SetShopVisible(false);
@@ -251,8 +178,7 @@ public sealed class EnemySpawner : MonoBehaviour
         List<EnemySpawnRuntimeState> states = BuildSpawnStates(currentWave);
         if (states.Count == 0)
         {
-            levelRunning = false;
-            spawnRoutine = null;
+            yield return FinishWaveAndOpenShop(runId);
             yield break;
         }
 
@@ -279,6 +205,11 @@ public sealed class EnemySpawner : MonoBehaviour
             yield return null;
         }
 
+        yield return FinishWaveAndOpenShop(runId);
+    }
+
+    private IEnumerator FinishWaveAndOpenShop(int runId)
+    {
         levelRunning = false;
         spawnRoutine = null;
         if (clearAliveEnemiesWhenLevelEnds)
@@ -286,9 +217,14 @@ public sealed class EnemySpawner : MonoBehaviour
             DestroyAliveEnemies();
         }
 
-        yield return new WaitForSeconds(shopOpenDelaySeconds);
+        if (shopOpenDelaySeconds > 0f)
+        {
+            yield return new WaitForSeconds(shopOpenDelaySeconds);
+        }
+
         if (runId == levelRunId)
         {
+            Debug.Log(11);
             OpenShop();
         }
     }
@@ -579,28 +515,32 @@ public sealed class EnemySpawner : MonoBehaviour
 
     private void OpenShop()
     {
-        AutoBindFlowReferences();
-        SetShopVisible(true);
+        // AutoBindFlowReferences();
+        // SetShopVisible(true);
 
-        if (refreshShopWhenOpened && shopManager != null)
-        {
-            shopManager.RefreshShop();
-        }
+        // if (refreshShopWhenOpened && shopManager != null)
+        // {
+        //     shopManager.RefreshShop();
+        // }
 
-        BindShopExitButton();
+        // BindShopExitButton();
+        shopManager.OpenShop();
+        Debug.Log(22);
+        // shopManager.OpenShop();
     }
 
     private void SetShopVisible(bool visible)
     {
-        if (shopRoot != null && shopRoot.activeSelf != visible)
-        {
-            shopRoot.SetActive(visible);
-        }
-
+        AutoBindFlowReferences();
         if (shopManager != null)
         {
             shopManager.SetShopOpen(visible);
             return;
+        }
+
+        if (shopRoot != null && shopRoot.activeSelf != visible)
+        {
+            shopRoot.SetActive(visible);
         }
     }
 
@@ -608,16 +548,7 @@ public sealed class EnemySpawner : MonoBehaviour
     {
         if (shopManager == null)
         {
-            shopManager = FindObjectOfType<ShopManager>();
-        }
-
-        if (shopRoot == null && shopManager != null)
-        {
-            Canvas canvas = shopManager.GetComponentInChildren<Canvas>(true);
-            if (canvas != null && canvas.gameObject != shopManager.gameObject)
-            {
-                shopRoot = canvas.gameObject;
-            }
+            shopManager = FindObjectOfType<ShopManager>(true);
         }
 
         if (shopExitButton == null && shopRoot != null)
@@ -694,6 +625,8 @@ public sealed class EnemySpawner : MonoBehaviour
     {
         EnemyBase enemy = CreateEnemy(definition, position);
         enemy.Initialize(definition, currentWave);
+        enemy.Died -= HandleEnemyDied;
+        enemy.Died += HandleEnemyDied;
 
         EnemyChaseAI chaseAI = enemy.GetComponent<EnemyChaseAI>();
         if (chaseAI == null)
@@ -707,28 +640,57 @@ public sealed class EnemySpawner : MonoBehaviour
 
     private EnemyBase CreateEnemy(EnemyDefinition definition, Vector3 position)
     {
-        EnemyBase prefab = GetPrefabForEnemy(definition);
-        if (prefab != null)
+        EnsureSpawnPool();
+        if (spawnPool != null)
         {
-            return Instantiate(prefab, position, Quaternion.identity);
+            return spawnPool.Get(GetPrefabForEnemy(definition), position, Quaternion.identity);
         }
 
-        GameObject enemyObject = new GameObject("Enemy");
-        enemyObject.transform.position = position;
+        EnemyBase prefab = GetPrefabForEnemy(definition);
+        return prefab != null
+            ? Instantiate(prefab, position, Quaternion.identity)
+            : new GameObject("Enemy").AddComponent<EnemyBase>();
+    }
 
-        SpriteRenderer spriteRenderer = enemyObject.AddComponent<SpriteRenderer>();
-        spriteRenderer.sprite = GetFallbackSprite();
-        spriteRenderer.color = new Color(0.95f, 0.28f, 0.2f, 1f);
-        enemyObject.transform.localScale = Vector3.one * 0.6f;
+    private void HandleEnemyDied(EnemyBase enemy)
+    {
+        if (enemy == null)
+        {
+            return;
+        }
 
-        Rigidbody2D rb = enemyObject.AddComponent<Rigidbody2D>();
-        rb.gravityScale = 0f;
-        rb.freezeRotation = true;
+        enemy.Died -= HandleEnemyDied;
+        aliveEnemies.Remove(enemy);
+        ReleaseOrDestroyEnemy(enemy);
+    }
 
-        CircleCollider2D collider = enemyObject.AddComponent<CircleCollider2D>();
-        collider.radius = 0.5f;
+    private void ReleaseOrDestroyEnemy(EnemyBase enemy)
+    {
+        if (enemy == null)
+        {
+            return;
+        }
 
-        return enemyObject.AddComponent<EnemyBase>();
+        if (spawnPool != null && spawnPool.Release(enemy))
+        {
+            return;
+        }
+
+        Destroy(enemy.gameObject);
+    }
+
+    private void EnsureSpawnPool()
+    {
+        if (spawnPool != null)
+        {
+            return;
+        }
+
+        spawnPool = GetComponent<EnemySpawnPool>();
+        if (spawnPool == null)
+        {
+            spawnPool = gameObject.AddComponent<EnemySpawnPool>();
+        }
     }
 
     private EnemyBase GetPrefabForEnemy(EnemyDefinition definition)
@@ -870,7 +832,8 @@ public sealed class EnemySpawner : MonoBehaviour
             EnemyBase enemy = aliveEnemies[index];
             if (enemy != null)
             {
-                Destroy(enemy.gameObject);
+                enemy.Died -= HandleEnemyDied;
+                ReleaseOrDestroyEnemy(enemy);
             }
         }
 
@@ -1077,21 +1040,6 @@ public sealed class EnemySpawner : MonoBehaviour
         }
 
         return Mathf.Max(0f, curve.Evaluate(value));
-    }
-
-    private static Sprite GetFallbackSprite()
-    {
-        if (fallbackSprite == null)
-        {
-            Texture2D texture = Texture2D.whiteTexture;
-            fallbackSprite = Sprite.Create(
-                texture,
-                new Rect(0f, 0f, texture.width, texture.height),
-                new Vector2(0.5f, 0.5f),
-                texture.width);
-        }
-
-        return fallbackSprite;
     }
 
     private sealed class EnemySpawnRuntimeState
