@@ -32,6 +32,11 @@ public class RangedWeapon : WeaponBase
         Shoot();
     }
 
+    protected override float GetFlatDamageBonus(PlayerStats stats)
+    {
+        return stats != null ? stats.RangedDamage : 0f;
+    }
+
     private void Shoot()
     {
         if (bulletPrefab == null) return;
@@ -42,6 +47,14 @@ public class RangedWeapon : WeaponBase
         GameObject bullet = bulletPool.Get();
         bullet.transform.position = spawnPos;
         bullet.transform.rotation = transform.rotation;
+
+        ProjectileDamageOnHit projectileDamage = bullet.GetComponent<ProjectileDamageOnHit>();
+        if (projectileDamage == null)
+        {
+            projectileDamage = bullet.AddComponent<ProjectileDamageOnHit>();
+        }
+
+        int projectileVersion = projectileDamage.Configure(GetAttackDamage(), bulletPool.Release);
 
         Rigidbody2D rb = bullet.GetComponent<Rigidbody2D>();
         if (rb != null)
@@ -54,15 +67,15 @@ public class RangedWeapon : WeaponBase
 
         // 重构：这里不再使用 Destroy，而是利用自己封装的组件/协程将子弹放回池子
         // 为了不加新功能，这里用 Invoke 模拟子弹生命周期结束回收。实战建议写在子弹脚本里。
-        StartCoroutine(ReturnBulletToPool(bullet, lifeTime));
+        StartCoroutine(ReturnBulletToPool(projectileDamage, projectileVersion, lifeTime));
     }
 
-    private System.Collections.IEnumerator ReturnBulletToPool(GameObject bullet, float delay)
+    private System.Collections.IEnumerator ReturnBulletToPool(ProjectileDamageOnHit projectile, int projectileVersion, float delay)
     {
         yield return new WaitForSeconds(delay);
-        if (bullet.activeSelf)
+        if (projectile != null && projectile.gameObject.activeSelf)
         {
-            bulletPool.Release(bullet); // 放回池中
+            projectile.Expire(projectileVersion);
         }
     }
 }

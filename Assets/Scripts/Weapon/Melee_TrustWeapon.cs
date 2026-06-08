@@ -28,6 +28,7 @@ public class Melee_TrustWeapon : WeaponBase
     {
         base.Awake();
         originalLocalPosition = transform.localPosition;
+        EnsureDamageHitboxesInChildren();
     }
 
     protected override void Update()

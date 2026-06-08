@@ -147,6 +147,11 @@ public sealed class EnemySpawnPool : MonoBehaviour
             enemy.gameObject.AddComponent<EnemyChaseAI>();
         }
 
+        if (enemy.GetComponent<EnemyContactDamage>() == null)
+        {
+            enemy.gameObject.AddComponent<EnemyContactDamage>();
+        }
+
         enemy.gameObject.SetActive(false);
     }
 

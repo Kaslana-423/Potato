@@ -23,6 +23,10 @@ public abstract class WeaponBase : MonoBehaviour
     protected Vector3 aimDirection = Vector3.right;
     protected float currentCooldown = 0f;
     protected bool isAttacking = false;
+    private int attackSequence;
+
+    public bool IsAttacking => isAttacking;
+    public int AttackSequence => attackSequence;
 
     protected virtual void Awake()
     {
@@ -58,7 +62,38 @@ public abstract class WeaponBase : MonoBehaviour
 
     protected virtual void Attack()
     {
+        attackSequence++;
         currentCooldown = attackCooldown;
+    }
+
+    public virtual float GetAttackDamage()
+    {
+        PlayerStats stats = PlayerStats.Instance;
+        float flatDamage = attackPower;
+        if (stats != null)
+        {
+            flatDamage += GetFlatDamageBonus(stats);
+            flatDamage *= 1f + stats.Damage / 100f;
+        }
+
+        return Mathf.Ceil(Mathf.Max(0f, flatDamage));
+    }
+
+    protected virtual float GetFlatDamageBonus(PlayerStats stats)
+    {
+        return stats != null ? stats.MeleeDamage : 0f;
+    }
+
+    protected void EnsureDamageHitboxesInChildren()
+    {
+        Collider2D[] colliders = GetComponentsInChildren<Collider2D>(true);
+        foreach (Collider2D collider in colliders)
+        {
+            if (collider.GetComponent<WeaponDamageHitbox>() == null)
+            {
+                collider.gameObject.AddComponent<WeaponDamageHitbox>();
+            }
+        }
     }
 
     protected virtual void UpdateWeaponRotation()

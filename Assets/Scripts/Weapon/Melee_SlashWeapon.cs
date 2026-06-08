@@ -74,6 +74,7 @@ public class Melee_SlashWeapon : WeaponBase
     {
         base.Awake();
         originalLocalPosition = transform.localPosition;
+        EnsureDamageHitboxesInChildren();
     }
 
     protected override void Update()
