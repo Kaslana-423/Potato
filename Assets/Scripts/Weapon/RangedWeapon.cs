@@ -15,11 +15,20 @@ public class RangedWeapon : WeaponBase
     protected override void Awake()
     {
         base.Awake();
-        // 初始化对象池
+        EnsureBulletPool();
+    }
+
+    private void EnsureBulletPool()
+    {
+        if (bulletPool != null || bulletPrefab == null)
+        {
+            return;
+        }
+
         bulletPool = new ObjectPool<GameObject>(
             createFunc: () => Instantiate(bulletPrefab),
-            actionOnGet: (obj) => obj.SetActive(true),
-            actionOnRelease: (obj) => obj.SetActive(false),
+            actionOnGet: PrepareBulletOnGet,
+            actionOnRelease: PrepareBulletOnRelease,
             actionOnDestroy: (obj) => Destroy(obj),
             defaultCapacity: 20,
             maxSize: 100
@@ -40,6 +49,8 @@ public class RangedWeapon : WeaponBase
     private void Shoot()
     {
         if (bulletPrefab == null) return;
+        EnsureBulletPool();
+        if (bulletPool == null) return;
 
         Vector3 spawnPos = firePoint != null ? firePoint.position : transform.position;
 
@@ -54,7 +65,7 @@ public class RangedWeapon : WeaponBase
             projectileDamage = bullet.AddComponent<ProjectileDamageOnHit>();
         }
 
-        int projectileVersion = projectileDamage.Configure(GetAttackDamage(), bulletPool.Release);
+        int projectileVersion = projectileDamage.Configure(GetAttackDamage(), ReleaseBullet);
 
         Rigidbody2D rb = bullet.GetComponent<Rigidbody2D>();
         if (rb != null)
@@ -77,5 +88,47 @@ public class RangedWeapon : WeaponBase
         {
             projectile.Expire(projectileVersion);
         }
+    }
+
+    private void ReleaseBullet(GameObject bullet)
+    {
+        if (bullet == null)
+        {
+            return;
+        }
+
+        if (bulletPool != null)
+        {
+            bulletPool.Release(bullet);
+        }
+        else
+        {
+            bullet.SetActive(false);
+        }
+    }
+
+    private static void PrepareBulletOnGet(GameObject bullet)
+    {
+        if (bullet != null)
+        {
+            bullet.SetActive(true);
+        }
+    }
+
+    private static void PrepareBulletOnRelease(GameObject bullet)
+    {
+        if (bullet == null)
+        {
+            return;
+        }
+
+        Rigidbody2D rb = bullet.GetComponent<Rigidbody2D>();
+        if (rb != null)
+        {
+            rb.velocity = Vector2.zero;
+            rb.angularVelocity = 0f;
+        }
+
+        bullet.SetActive(false);
     }
 }

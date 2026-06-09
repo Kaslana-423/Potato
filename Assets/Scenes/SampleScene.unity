@@ -140,7 +140,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &47953526
 Transform:
   m_ObjectHideFlags: 0
@@ -464,7 +464,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &108805284
 Transform:
   m_ObjectHideFlags: 0
@@ -2818,6 +2818,7 @@ GameObject:
   - component: {fileID: 725946745}
   - component: {fileID: 725946746}
   - component: {fileID: 725946747}
+  - component: {fileID: 725946748}
   m_Layer: 6
   m_Name: Weapon3
   m_TagString: Untagged
@@ -2930,6 +2931,91 @@ MonoBehaviour:
   gizmoRotationMarkerLength: 0.35
   nextSlashGizmoColor: {r: 1, g: 0.25, b: 0.1, a: 1}
   alternateSlashGizmoColor: {r: 0.1, g: 0.65, b: 1, a: 0.55}
+--- !u!60 &725946748
+PolygonCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 725946744}
+  m_Enabled: 1
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IsTrigger: 1
+  m_UsedByEffector: 0
+  m_UsedByComposite: 0
+  m_Offset: {x: 0, y: 0}
+  m_SpriteTilingProperty:
+    border: {x: 0, y: 0, z: 0, w: 0}
+    pivot: {x: 0.3311223, y: 0.5015931}
+    oldSize: {x: 1.5, y: 0.75}
+    newSize: {x: 1, y: 1}
+    adaptiveTilingThreshold: 0.5
+    drawMode: 0
+    adaptiveTiling: 0
+  m_AutoTiling: 0
+  m_Points:
+    m_Paths:
+    - - {x: 0.912343, y: 0.004803637}
+      - {x: 0.9073919, y: 0.013648901}
+      - {x: 0.8896418, y: 0.030242775}
+      - {x: 0.7631651, y: 0.084737025}
+      - {x: 0.70744175, y: 0.07786408}
+      - {x: 0.2379281, y: 0.07314418}
+      - {x: 0.15253831, y: 0.07312501}
+      - {x: 0.15075922, y: 0.10664084}
+      - {x: 0.17329054, y: 0.16842504}
+      - {x: 0.18113843, y: 0.2056053}
+      - {x: 0.16271892, y: 0.23387453}
+      - {x: 0.12027484, y: 0.23380733}
+      - {x: 0.09017954, y: 0.1964898}
+      - {x: 0.07720442, y: 0.10400078}
+      - {x: 0.0714148, y: 0.05312927}
+      - {x: -0.086343944, y: 0.054267146}
+      - {x: -0.11156436, y: 0.0850497}
+      - {x: -0.16012248, y: 0.08140459}
+      - {x: -0.20702802, y: 0.017868843}
+      - {x: -0.20618351, y: -0.042717256}
+      - {x: -0.19091532, y: -0.07299318}
+      - {x: -0.15580092, y: -0.08466956}
+      - {x: -0.07265813, y: -0.048997432}
+      - {x: 0.045994535, y: -0.07622361}
+      - {x: 0.08670536, y: -0.07708991}
+      - {x: 0.08828782, y: -0.14972141}
+      - {x: 0.10537064, y: -0.1985563}
+      - {x: 0.15338661, y: -0.21724437}
+      - {x: 0.19196923, y: -0.2135048}
+      - {x: 0.21063684, y: -0.1996523}
+      - {x: 0.19524972, y: -0.15654522}
+      - {x: 0.1714785, y: -0.116277255}
+      - {x: 0.16944514, y: -0.09005407}
+      - {x: 0.17534961, y: -0.074446425}
+      - {x: 0.20131058, y: -0.076125965}
+      - {x: 0.2891251, y: -0.076493435}
+      - {x: 0.46599483, y: -0.0778391}
+      - {x: 0.6163192, y: -0.078459136}
+      - {x: 0.7777218, y: -0.07633156}
+      - {x: 0.86712855, y: -0.028420338}
+  m_UseDelaunayMesh: 0
 --- !u!114 &777938047 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 627070330266893472, guid: 0b2cae638567ec2439ec6b8933a3526b,
