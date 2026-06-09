@@ -15,7 +15,7 @@ public sealed class EnemySpawner : MonoBehaviour
     [SerializeField] private ShopManager shopManager;
     [SerializeField] private GameObject shopRoot;
     [SerializeField] private Button shopExitButton;
-    [SerializeField, Min(0f)] private float shopOpenDelaySeconds = 2f;
+    [SerializeField, Min(0f)] private float shopOpenDelaySeconds = 0f;
     [SerializeField, Min(0f)] private float nextLevelDelaySeconds = 1f;
     [SerializeField] private bool hideShopOnStart = true;
     [SerializeField] private bool refreshShopWhenOpened = true;
@@ -59,10 +59,20 @@ public sealed class EnemySpawner : MonoBehaviour
     private Coroutine nextLevelRoutine;
     private bool levelRunning;
     private int levelRunId;
+    private float currentWaveDurationSeconds;
+    private float currentWaveStartTime;
+    private float lastWaveElapsedSeconds;
 
     public int CurrentWave => currentWave;
     public int AliveCount => lifetimeTracker != null ? lifetimeTracker.AliveCount : 0;
     public bool IsLevelRunning => levelRunning;
+    public float CurrentWaveDurationSeconds => currentWaveDurationSeconds > 0f
+        ? currentWaveDurationSeconds
+        : GetWaveDuration(currentWave);
+    public float CurrentWaveElapsedSeconds => levelRunning
+        ? Mathf.Clamp(Time.time - currentWaveStartTime, 0f, CurrentWaveDurationSeconds)
+        : Mathf.Clamp(lastWaveElapsedSeconds, 0f, CurrentWaveDurationSeconds);
+    public float CurrentWaveRemainingSeconds => Mathf.Max(0f, CurrentWaveDurationSeconds - CurrentWaveElapsedSeconds);
 
     private void Reset()
     {
@@ -144,6 +154,8 @@ public sealed class EnemySpawner : MonoBehaviour
     public void SetWave(int wave)
     {
         currentWave = Mathf.Max(1, wave);
+        currentWaveDurationSeconds = GetWaveDuration(currentWave);
+        lastWaveElapsedSeconds = 0f;
     }
 
     public void StartWave(int wave)
@@ -176,6 +188,9 @@ public sealed class EnemySpawner : MonoBehaviour
     {
         int runId = levelRunId;
         List<EnemyWaveSpawnRuntimeState> states = BuildSpawnStates(currentWave);
+        float waveDuration = GetWaveDuration(currentWave);
+        BeginWaveTimer(waveDuration);
+
         if (states.Count == 0)
         {
             yield return FinishWaveAndOpenShop(runId);
@@ -183,10 +198,15 @@ public sealed class EnemySpawner : MonoBehaviour
         }
 
         float elapsed = 0f;
-        float waveDuration = GetWaveDuration(currentWave);
 
         while (elapsed < waveDuration)
         {
+            elapsed = CurrentWaveElapsedSeconds;
+            if (elapsed >= waveDuration)
+            {
+                break;
+            }
+
             TrimDeadEnemies();
 
             EnemyWaveSpawnRuntimeState readyState = EnemyWaveSpawnPlanner.GetNextReadyState(states, elapsed);
@@ -195,6 +215,7 @@ public sealed class EnemySpawner : MonoBehaviour
                 float waitTime = Mathf.Min(EnemyWaveSpawnPlanner.GetTimeUntilNextSpawn(states, elapsed), waveDuration - elapsed);
                 yield return new WaitForSeconds(waitTime);
                 elapsed += waitTime;
+                lastWaveElapsedSeconds = elapsed;
                 continue;
             }
 
@@ -203,6 +224,7 @@ public sealed class EnemySpawner : MonoBehaviour
             readyState.nextSpawnTime = elapsed + EnemyWaveSpawnPlanner.GetSpawnInterval(readyState, progress);
 
             yield return null;
+            lastWaveElapsedSeconds = CurrentWaveElapsedSeconds;
         }
 
         yield return FinishWaveAndOpenShop(runId);
@@ -210,6 +232,7 @@ public sealed class EnemySpawner : MonoBehaviour
 
     private IEnumerator FinishWaveAndOpenShop(int runId)
     {
+        lastWaveElapsedSeconds = CurrentWaveDurationSeconds;
         levelRunning = false;
         spawnRoutine = null;
         if (clearAliveEnemiesWhenLevelEnds)
@@ -332,6 +355,13 @@ public sealed class EnemySpawner : MonoBehaviour
     private float GetWaveDuration(int wave)
     {
         return EnemyWaveSpawnPlanner.GetWaveDuration(wave, useConfiguredWaves, waveSettings);
+    }
+
+    private void BeginWaveTimer(float waveDuration)
+    {
+        currentWaveDurationSeconds = Mathf.Max(0f, waveDuration);
+        currentWaveStartTime = Time.time;
+        lastWaveElapsedSeconds = 0f;
     }
 
     private EnemyDefinition PickFallbackEnemyDefinition()

@@ -8,6 +8,12 @@ public sealed class EnemySpawnPool : MonoBehaviour
     [SerializeField, Min(1)] private int maxPoolSizePerPrefab = 256;
     [SerializeField] private Transform poolRoot;
 
+    [Header("Coin Drops")]
+    [SerializeField] private CoinPickup coinPrefab;
+    [SerializeField, Min(0)] private int defaultMinCoinsDropped = 1;
+    [SerializeField, Min(0)] private int defaultMaxCoinsDropped = 3;
+    [SerializeField, Min(0f)] private float defaultCoinScatterRadius = 0.45f;
+
     private readonly Dictionary<EnemyBase, ObjectPool<EnemyBase>> prefabPools = new Dictionary<EnemyBase, ObjectPool<EnemyBase>>();
     private readonly Dictionary<EnemyBase, ObjectPool<EnemyBase>> instancePools = new Dictionary<EnemyBase, ObjectPool<EnemyBase>>();
     private readonly HashSet<EnemyBase> activeEnemies = new HashSet<EnemyBase>();
@@ -151,6 +157,21 @@ public sealed class EnemySpawnPool : MonoBehaviour
         {
             enemy.gameObject.AddComponent<EnemyContactDamage>();
         }
+
+        EnemyCoinDropper coinDropper = enemy.GetComponent<EnemyCoinDropper>();
+        bool addedCoinDropper = false;
+        if (coinDropper == null)
+        {
+            coinDropper = enemy.gameObject.AddComponent<EnemyCoinDropper>();
+            addedCoinDropper = true;
+        }
+
+        coinDropper.ConfigureDefaults(
+            coinPrefab,
+            defaultMinCoinsDropped,
+            defaultMaxCoinsDropped,
+            defaultCoinScatterRadius,
+            addedCoinDropper);
 
         enemy.gameObject.SetActive(false);
     }

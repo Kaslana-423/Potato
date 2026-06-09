@@ -85,6 +85,12 @@ public class EnemyBase : MonoBehaviour
 
     protected virtual void Die()
     {
+        EnemyCoinDropper coinDropper = GetComponent<EnemyCoinDropper>();
+        if (coinDropper != null)
+        {
+            coinDropper.DropCoins();
+        }
+
         Died?.Invoke(this);
         if (gameObject.activeSelf)
         {

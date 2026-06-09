@@ -55,8 +55,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
@@ -896,6 +896,9 @@ GameObject:
   - component: {fileID: 2692383670124729256}
   - component: {fileID: 5325147151003086773}
   - component: {fileID: 8615302697449188578}
+  - component: {fileID: 776300520100000002}
+  - component: {fileID: 776300520100000004}
+  - component: {fileID: 776300520100000006}
   m_Layer: 5
   m_Name: PlayerState
   m_TagString: Untagged
@@ -903,6 +906,59 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
+--- !u!114 &776300520100000002
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5016307726388054247}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b7b09a06dad4e5499dc97f615dfb4d3, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  playerHealth: {fileID: 0}
+  bindPlayerHealthOnEnable: 1
+  addPlayerHealthIfMissing: 1
+  fillImage: {fileID: 0}
+  currentHealthText: {fileID: 0}
+  maxHealthText: {fileID: 0}
+--- !u!114 &776300520100000004
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5016307726388054247}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4f5d4d02cd2640e89b581799c80f8c42, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  wallet: {fileID: 0}
+  bindWalletOnEnable: 1
+  autoFindCoinNumTexts: 1
+  coinTexts:
+  - {fileID: 6304439589894926261}
+--- !u!114 &776300520100000006
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5016307726388054247}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d8930ecf4a44982878db9434c958693, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  enemySpawner: {fileID: 0}
+  bindSpawnerOnEnable: 1
+  autoFindTexts: 1
+  waveText: {fileID: 5415487753444618589}
+  counterText: {fileID: 9138370396427714189}
+  useMinuteSecondCounter: 0
 --- !u!224 &2692383670124729256
 RectTransform:
   m_ObjectHideFlags: 0

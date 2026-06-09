@@ -26,6 +26,10 @@ public sealed class ShopManager : MonoBehaviour
     [SerializeField] private RelicBag relicBag;
     [SerializeField] private WeaponBag weaponBag;
 
+    [Header("Currency")]
+    [SerializeField] private PlayerWallet playerWallet;
+    [SerializeField] private PlayerCurrencyDisplay currencyDisplay;
+
     [Header("Refresh")]
     [SerializeField] private bool refreshOnStart = true;
 
@@ -102,6 +106,30 @@ public sealed class ShopManager : MonoBehaviour
         {
             weaponBag = FindOrAddComponent<WeaponBag>("WeaponBag");
         }
+
+        if (playerWallet == null)
+        {
+            playerWallet = FindObjectOfType<PlayerWallet>(true);
+            if (playerWallet == null && Application.isPlaying)
+            {
+                playerWallet = PlayerWallet.GetOrCreate();
+            }
+        }
+
+        if (currencyDisplay == null)
+        {
+            currencyDisplay = GetComponent<PlayerCurrencyDisplay>();
+            if (currencyDisplay == null)
+            {
+                currencyDisplay = gameObject.AddComponent<PlayerCurrencyDisplay>();
+            }
+        }
+
+        currencyDisplay.AutoBindReferences();
+        if (Application.isPlaying)
+        {
+            currencyDisplay.BindWallet(playerWallet != null ? playerWallet : PlayerWallet.GetOrCreate());
+        }
     }
 
     public void OpenShop()
@@ -128,7 +156,6 @@ public sealed class ShopManager : MonoBehaviour
 
             if (refreshWhenOpenedIfEmpty && currentOffers.Count == 0)
             {
-                Debug.Log(33);
                 RefreshShop();
             }
         }
@@ -261,26 +288,52 @@ public sealed class ShopManager : MonoBehaviour
             return;
         }
 
-        bool purchased;
-        string failureReason;
+        ShopBagBase targetBag;
+        string bagName;
         if (content.Kind == ShopContentKind.Weapon)
         {
-            if (weaponBag == null)
-            {
-                SetStatus("没有绑定 WeaponBag，无法购买武器。");
-                return;
-            }
+            targetBag = weaponBag;
+            bagName = "武器背包";
+        }
+        else
+        {
+            targetBag = relicBag;
+            bagName = "道具背包";
+        }
 
+        if (targetBag == null)
+        {
+            SetStatus($"没有绑定 {bagName}，无法购买。");
+            return;
+        }
+
+        if (!targetBag.CanAccept(content, out string failureReason))
+        {
+            SetStatus(failureReason);
+            return;
+        }
+
+        PlayerWallet wallet = ResolvePlayerWallet();
+        int price = Mathf.Max(0, content.BasePrice);
+        if (wallet == null)
+        {
+            SetStatus("没有找到玩家金币数据，无法购买。");
+            return;
+        }
+
+        if (!wallet.TrySpend(price))
+        {
+            SetStatus($"金币不足：需要 {price}，当前 {wallet.Coins}。");
+            return;
+        }
+
+        bool purchased;
+        if (content.Kind == ShopContentKind.Weapon)
+        {
             purchased = weaponBag.TryAdd(content, out failureReason);
         }
         else
         {
-            if (relicBag == null)
-            {
-                SetStatus("没有绑定 RelicBag，无法购买道具。");
-                return;
-            }
-
             purchased = relicBag.TryAdd(content, out failureReason);
         }
 
@@ -291,12 +344,23 @@ public sealed class ShopManager : MonoBehaviour
                 offerView.MarkPurchased();
             }
 
-            SetStatus($"已购买 {content.LocalizedDisplayName}，放入{(content.Kind == ShopContentKind.Weapon ? "武器背包" : "道具背包")}。");
+            SetStatus($"已购买 {content.LocalizedDisplayName}，花费 {price} 金币，放入{bagName}。");
         }
         else
         {
+            wallet.AddCoins(price);
             SetStatus(failureReason);
         }
+    }
+
+    private PlayerWallet ResolvePlayerWallet()
+    {
+        if (playerWallet == null)
+        {
+            playerWallet = PlayerWallet.GetOrCreate();
+        }
+
+        return playerWallet;
     }
 
     private void SetStatus(string message)

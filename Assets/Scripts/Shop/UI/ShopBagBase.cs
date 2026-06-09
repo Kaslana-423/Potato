@@ -84,6 +84,26 @@ public abstract class ShopBagBase : MonoBehaviour
         return true;
     }
 
+    public bool CanAccept(ShopContentDefinition content, out string failureReason)
+    {
+        failureReason = string.Empty;
+        AutoBindReferences();
+
+        if (content == null)
+        {
+            failureReason = "商品为空，无法加入背包。";
+            return false;
+        }
+
+        if (contentRoot == null)
+        {
+            failureReason = MissingBagMessage;
+            return false;
+        }
+
+        return CanAdd(content, out failureReason);
+    }
+
     [ContextMenu("Clear Bag")]
     public void Clear()
     {
