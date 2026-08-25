@@ -12,6 +12,76 @@ public static class PlayerStatsPanelPrefabCreator
     private const string ChineseFontPath =
         "Assets/TextMesh Pro/Resources/Fonts & Materials/SmileySans-Oblique SDF.asset";
 
+    [InitializeOnLoadMethod]
+    private static void ScheduleExistingPrefabUpgrade()
+    {
+        EditorApplication.delayCall -= UpgradeExistingPlayerStatsPanelPrefab;
+        EditorApplication.delayCall += UpgradeExistingPlayerStatsPanelPrefab;
+    }
+
+    [MenuItem("Tools/Potato UI/Upgrade Existing Player Stats Panel Prefab")]
+    public static void UpgradeExistingPlayerStatsPanelPrefab()
+    {
+        if (AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath) == null)
+        {
+            return;
+        }
+
+        GameObject root = PrefabUtility.LoadPrefabContents(PrefabPath);
+        bool changed = false;
+        try
+        {
+            PlayerStatsPanelView panel = root.GetComponent<PlayerStatsPanelView>();
+            TMP_Text primaryTabText = FindChildComponent<TMP_Text>(root, "PrimaryTabText");
+            TMP_Text secondaryTabText = FindChildComponent<TMP_Text>(root, "SecondaryTabText");
+
+            Button primaryButton = EnsureEditorTabButton(primaryTabText != null ? primaryTabText.gameObject : null, primaryTabText, ref changed);
+            GameObject secondaryButtonObject = secondaryTabText != null && secondaryTabText.transform.parent != null
+                ? secondaryTabText.transform.parent.gameObject
+                : null;
+            Graphic secondaryGraphic = secondaryButtonObject != null
+                ? secondaryButtonObject.GetComponent<Graphic>()
+                : secondaryTabText;
+            Button secondaryButton = EnsureEditorTabButton(secondaryButtonObject, secondaryGraphic, ref changed);
+
+            Transform content = FindChild(root, "RowsContent");
+            ScrollRect scrollRect;
+            if (content == null)
+            {
+                Transform oldRowsContainer = FindChild(root, "RowsContainer", "Rows");
+                content = UpgradeRowsContainer(oldRowsContainer, out scrollRect);
+                changed |= content != null;
+            }
+            else
+            {
+                scrollRect = content.GetComponentInParent<ScrollRect>(true);
+            }
+
+            if (panel != null)
+            {
+                var serializedPanel = new SerializedObject(panel);
+                changed |= SetObjectReference(serializedPanel, "primaryTabText", primaryTabText);
+                changed |= SetObjectReference(serializedPanel, "secondaryTabText", secondaryTabText);
+                changed |= SetObjectReference(serializedPanel, "primaryTabButton", primaryButton);
+                changed |= SetObjectReference(serializedPanel, "secondaryTabButton", secondaryButton);
+                changed |= SetObjectReference(serializedPanel, "rowsContainer", content);
+                changed |= SetObjectReference(serializedPanel, "rowsScrollRect", scrollRect);
+                serializedPanel.ApplyModifiedPropertiesWithoutUndo();
+            }
+
+            if (changed)
+            {
+                PrefabUtility.SaveAsPrefabAsset(root, PrefabPath);
+                AssetDatabase.SaveAssets();
+                Debug.Log($"Upgraded player stats panel prefab at {PrefabPath}");
+            }
+        }
+        finally
+        {
+            PrefabUtility.UnloadPrefabContents(root);
+        }
+    }
+
     [MenuItem("Tools/Potato UI/Create Player Stats Panel Prefab")]
     public static void CreatePlayerStatsPanelPrefab()
     {
@@ -44,7 +114,7 @@ public static class PlayerStatsPanelPrefabCreator
                 Color.white,
                 FontStyles.Bold);
 
-            CreateText(
+            TMP_Text primaryTabText = CreateText(
                 "PrimaryTabText",
                 root.transform,
                 "主要",
@@ -54,6 +124,7 @@ public static class PlayerStatsPanelPrefabCreator
                 TextAlignmentOptions.Center,
                 Color.white,
                 FontStyles.Bold);
+            AddTabButton(primaryTabText.gameObject, primaryTabText);
 
             GameObject secondaryTab = CreateUiObject(
                 "SecondaryTab",
@@ -62,7 +133,7 @@ public static class PlayerStatsPanelPrefabCreator
                 new Vector2(120f, 34f));
             Image secondaryTabBackground = secondaryTab.AddComponent<Image>();
             secondaryTabBackground.color = new Color(0.02f, 0.02f, 0.02f, 0.96f);
-            CreateText(
+            TMP_Text secondaryTabText = CreateText(
                 "SecondaryTabText",
                 secondaryTab.transform,
                 "次要",
@@ -72,12 +143,32 @@ public static class PlayerStatsPanelPrefabCreator
                 TextAlignmentOptions.Center,
                 Color.white,
                 FontStyles.Bold);
+            AddTabButton(secondaryTab, secondaryTabBackground);
 
-            GameObject rowsContainer = CreateUiObject(
-                "RowsContainer",
+            GameObject rowsViewport = CreateUiObject(
+                "RowsViewport",
                 root.transform,
                 new Vector2(0f, -43f),
                 new Vector2(244f, 430f));
+            Image rowsViewportGraphic = rowsViewport.AddComponent<Image>();
+            rowsViewportGraphic.color = Color.clear;
+            rowsViewportGraphic.raycastTarget = true;
+            rowsViewport.AddComponent<RectMask2D>();
+            ScrollRect scrollRect = rowsViewport.AddComponent<ScrollRect>();
+            scrollRect.horizontal = false;
+            scrollRect.vertical = true;
+            scrollRect.movementType = ScrollRect.MovementType.Clamped;
+            scrollRect.scrollSensitivity = 24f;
+
+            GameObject rowsContainer = CreateUiObject(
+                "RowsContent",
+                rowsViewport.transform,
+                Vector2.zero,
+                Vector2.zero);
+            RectTransform rowsContentRect = rowsContainer.GetComponent<RectTransform>();
+            rowsContentRect.anchorMin = new Vector2(0f, 1f);
+            rowsContentRect.anchorMax = new Vector2(1f, 1f);
+            rowsContentRect.pivot = new Vector2(0.5f, 1f);
             VerticalLayoutGroup layout = rowsContainer.AddComponent<VerticalLayoutGroup>();
             layout.childControlWidth = false;
             layout.childControlHeight = false;
@@ -85,6 +176,11 @@ public static class PlayerStatsPanelPrefabCreator
             layout.childForceExpandHeight = false;
             layout.childAlignment = TextAnchor.UpperCenter;
             layout.spacing = 2f;
+            ContentSizeFitter fitter = rowsContainer.AddComponent<ContentSizeFitter>();
+            fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+            fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            scrollRect.viewport = rowsViewport.GetComponent<RectTransform>();
+            scrollRect.content = rowsContentRect;
 
             PlayerStatRowView rowTemplate = CreateRow("RowTemplate", rowsContainer.transform);
             rowTemplate.gameObject.SetActive(false);
@@ -266,6 +362,173 @@ public static class PlayerStatsPanelPrefabCreator
         text.enableWordWrapping = false;
         text.overflowMode = TextOverflowModes.Truncate;
         return text;
+    }
+
+    private static void AddTabButton(GameObject buttonObject, Graphic targetGraphic)
+    {
+        Button button = buttonObject.AddComponent<Button>();
+        button.targetGraphic = targetGraphic;
+        button.transition = Selectable.Transition.None;
+    }
+
+    private static Button EnsureEditorTabButton(
+        GameObject buttonObject,
+        Graphic targetGraphic,
+        ref bool changed)
+    {
+        if (buttonObject == null)
+        {
+            return null;
+        }
+
+        Button button = buttonObject.GetComponent<Button>();
+        if (button == null)
+        {
+            button = buttonObject.AddComponent<Button>();
+            changed = true;
+        }
+
+        if (button.targetGraphic != targetGraphic)
+        {
+            button.targetGraphic = targetGraphic;
+            changed = true;
+        }
+
+        if (button.transition != Selectable.Transition.None)
+        {
+            button.transition = Selectable.Transition.None;
+            changed = true;
+        }
+
+        return button;
+    }
+
+    private static Transform UpgradeRowsContainer(Transform oldRowsContainer, out ScrollRect scrollRect)
+    {
+        scrollRect = null;
+        RectTransform viewport = oldRowsContainer as RectTransform;
+        if (viewport == null)
+        {
+            return null;
+        }
+
+        viewport.name = "RowsViewport";
+        var children = new List<Transform>();
+        for (int index = 0; index < viewport.childCount; index++)
+        {
+            children.Add(viewport.GetChild(index));
+        }
+
+        GameObject contentObject = CreateUiObject("RowsContent", viewport, Vector2.zero, Vector2.zero);
+        RectTransform content = contentObject.GetComponent<RectTransform>();
+        content.anchorMin = new Vector2(0f, 1f);
+        content.anchorMax = new Vector2(1f, 1f);
+        content.pivot = new Vector2(0.5f, 1f);
+        foreach (Transform child in children)
+        {
+            child.SetParent(content, false);
+        }
+
+        VerticalLayoutGroup oldLayout = viewport.GetComponent<VerticalLayoutGroup>();
+        VerticalLayoutGroup newLayout = contentObject.AddComponent<VerticalLayoutGroup>();
+        if (oldLayout != null)
+        {
+            newLayout.padding = oldLayout.padding;
+            newLayout.spacing = oldLayout.spacing;
+            newLayout.childAlignment = oldLayout.childAlignment;
+            newLayout.childControlWidth = oldLayout.childControlWidth;
+            newLayout.childControlHeight = oldLayout.childControlHeight;
+            newLayout.childForceExpandWidth = oldLayout.childForceExpandWidth;
+            newLayout.childForceExpandHeight = oldLayout.childForceExpandHeight;
+            Object.DestroyImmediate(oldLayout);
+        }
+
+        ContentSizeFitter fitter = contentObject.AddComponent<ContentSizeFitter>();
+        fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+        fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+        Image viewportGraphic = viewport.GetComponent<Image>();
+        if (viewportGraphic == null)
+        {
+            viewportGraphic = viewport.gameObject.AddComponent<Image>();
+        }
+
+        viewportGraphic.color = Color.clear;
+        viewportGraphic.raycastTarget = true;
+        if (viewport.GetComponent<RectMask2D>() == null)
+        {
+            viewport.gameObject.AddComponent<RectMask2D>();
+        }
+
+        scrollRect = viewport.GetComponent<ScrollRect>();
+        if (scrollRect == null)
+        {
+            scrollRect = viewport.gameObject.AddComponent<ScrollRect>();
+        }
+
+        scrollRect.viewport = viewport;
+        scrollRect.content = content;
+        scrollRect.horizontal = false;
+        scrollRect.vertical = true;
+        scrollRect.movementType = ScrollRect.MovementType.Clamped;
+        scrollRect.scrollSensitivity = 24f;
+        return content;
+    }
+
+    private static bool SetObjectReference(
+        SerializedObject serializedObject,
+        string propertyName,
+        Object value)
+    {
+        SerializedProperty property = serializedObject.FindProperty(propertyName);
+        if (property == null || property.objectReferenceValue == value)
+        {
+            return false;
+        }
+
+        property.objectReferenceValue = value;
+        return true;
+    }
+
+    private static Transform FindChild(GameObject root, params string[] names)
+    {
+        if (root == null)
+        {
+            return null;
+        }
+
+        foreach (Transform child in root.GetComponentsInChildren<Transform>(true))
+        {
+            foreach (string objectName in names)
+            {
+                if (child.name == objectName)
+                {
+                    return child;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private static T FindChildComponent<T>(GameObject root, params string[] names) where T : Component
+    {
+        foreach (Transform child in root.GetComponentsInChildren<Transform>(true))
+        {
+            foreach (string objectName in names)
+            {
+                if (child.name == objectName)
+                {
+                    T component = child.GetComponent<T>();
+                    if (component != null)
+                    {
+                        return component;
+                    }
+                }
+            }
+        }
+
+        return null;
     }
 
     private static void EnsureDirectoryExists()

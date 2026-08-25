@@ -4,6 +4,7 @@ public sealed class PlasticExplosiveGeneratedItem : ShopItemDefinition
 {
     private static readonly ItemStatModifier[] modifiers =
     {
+        new ItemStatModifier("Explosion Size", 25f, true),
     };
 
     public override string Id => "item.plastic_explosive";

@@ -7,6 +7,7 @@ public sealed class SharpBulletGeneratedItem : ShopItemDefinition
         new ItemStatModifier("Damage", -5f, true),
         new ItemStatModifier("Piercing Damage", -20f, true),
         new ItemStatModifier("Knockback", -3f, false),
+        new ItemStatModifier("Piercing", 1f, false),
     };
 
     public override string Id => "item.sharp_bullet";

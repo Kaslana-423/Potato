@@ -1,5 +1,6 @@
+using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Pool; // 引入对象池
+using UnityEngine.Pool;
 
 public class RangedWeapon : WeaponBase
 {
@@ -9,13 +10,44 @@ public class RangedWeapon : WeaponBase
     public float bulletSpeed = 15f;
     public float rangeToDistanceRatio = 0.01f;
 
-    // 重构：建立子弹对象池
+    [Header("子弹对象池")]
+    [SerializeField, Min(0)] private int poolDefaultCapacity = 20;
+    [SerializeField, Min(1)] private int poolMaxSize = 100;
+    [SerializeField, Min(0)] private int prewarmCount = 10;
+    [SerializeField] private bool collectionChecks = true;
+    [SerializeField] private Transform poolRoot;
+
     private ObjectPool<GameObject> bulletPool;
+    private readonly HashSet<GameObject> activeBullets = new HashSet<GameObject>();
+
+    public int ActiveBulletCount => activeBullets.Count;
+    public int InactiveBulletCount => bulletPool != null ? bulletPool.CountInactive : 0;
 
     protected override void Awake()
     {
         base.Awake();
         EnsureBulletPool();
+    }
+
+    private void OnValidate()
+    {
+        poolDefaultCapacity = Mathf.Max(0, poolDefaultCapacity);
+        poolMaxSize = Mathf.Max(1, poolMaxSize);
+        prewarmCount = Mathf.Clamp(prewarmCount, 0, poolMaxSize);
+        bulletSpeed = Mathf.Max(0.01f, bulletSpeed);
+        rangeToDistanceRatio = Mathf.Max(0f, rangeToDistanceRatio);
+    }
+
+    private void OnDisable()
+    {
+        ReleaseAllActiveBullets();
+    }
+
+    private void OnDestroy()
+    {
+        ReleaseAllActiveBullets();
+        bulletPool?.Clear();
+        bulletPool = null;
     }
 
     private void EnsureBulletPool()
@@ -30,9 +62,22 @@ public class RangedWeapon : WeaponBase
             actionOnGet: PrepareBulletOnGet,
             actionOnRelease: PrepareBulletOnRelease,
             actionOnDestroy: (obj) => Destroy(obj),
-            defaultCapacity: 20,
-            maxSize: 100
+            collectionCheck: collectionChecks,
+            defaultCapacity: poolDefaultCapacity,
+            maxSize: poolMaxSize
         );
+
+        int warmCount = Mathf.Min(prewarmCount, poolMaxSize);
+        var warmedBullets = new List<GameObject>(warmCount);
+        for (int index = 0; index < warmCount; index++)
+        {
+            warmedBullets.Add(bulletPool.Get());
+        }
+
+        foreach (GameObject bullet in warmedBullets)
+        {
+            bulletPool.Release(bullet);
+        }
     }
 
     protected override void Attack()
@@ -56,6 +101,7 @@ public class RangedWeapon : WeaponBase
 
         // 从池中拿取子弹，而不是 Instantiate
         GameObject bullet = bulletPool.Get();
+        activeBullets.Add(bullet);
         bullet.transform.position = spawnPos;
         bullet.transform.rotation = transform.rotation;
 
@@ -65,34 +111,26 @@ public class RangedWeapon : WeaponBase
             projectileDamage = bullet.AddComponent<ProjectileDamageOnHit>();
         }
 
-        int projectileVersion = projectileDamage.Configure(GetAttackDamage(), ReleaseBullet);
-
         Rigidbody2D rb = bullet.GetComponent<Rigidbody2D>();
+        float safeBulletSpeed = Mathf.Max(0.01f, bulletSpeed);
         if (rb != null)
         {
-            rb.velocity = transform.right * bulletSpeed;
+            rb.velocity = transform.right * safeBulletSpeed;
         }
 
-        float actualDistance = attackRange * rangeToDistanceRatio;
-        float lifeTime = actualDistance / bulletSpeed;
-
-        // 重构：这里不再使用 Destroy，而是利用自己封装的组件/协程将子弹放回池子
-        // 为了不加新功能，这里用 Invoke 模拟子弹生命周期结束回收。实战建议写在子弹脚本里。
-        StartCoroutine(ReturnBulletToPool(projectileDamage, projectileVersion, lifeTime));
-    }
-
-    private System.Collections.IEnumerator ReturnBulletToPool(ProjectileDamageOnHit projectile, int projectileVersion, float delay)
-    {
-        yield return new WaitForSeconds(delay);
-        if (projectile != null && projectile.gameObject.activeSelf)
-        {
-            projectile.Expire(projectileVersion);
-        }
+        float actualDistance = Mathf.Max(0.01f, attackRange * rangeToDistanceRatio);
+        float lifeTime = actualDistance / safeBulletSpeed;
+        projectileDamage.Configure(GetAttackDamage(), lifeTime, ReleaseBullet);
     }
 
     private void ReleaseBullet(GameObject bullet)
     {
         if (bullet == null)
+        {
+            return;
+        }
+
+        if (!activeBullets.Remove(bullet))
         {
             return;
         }
@@ -107,15 +145,16 @@ public class RangedWeapon : WeaponBase
         }
     }
 
-    private static void PrepareBulletOnGet(GameObject bullet)
+    private void PrepareBulletOnGet(GameObject bullet)
     {
         if (bullet != null)
         {
+            bullet.transform.SetParent(null, true);
             bullet.SetActive(true);
         }
     }
 
-    private static void PrepareBulletOnRelease(GameObject bullet)
+    private void PrepareBulletOnRelease(GameObject bullet)
     {
         if (bullet == null)
         {
@@ -129,6 +168,27 @@ public class RangedWeapon : WeaponBase
             rb.angularVelocity = 0f;
         }
 
+        if (poolRoot != null)
+        {
+            bullet.transform.SetParent(poolRoot, false);
+        }
+
         bullet.SetActive(false);
+    }
+
+    private void ReleaseAllActiveBullets()
+    {
+        if (activeBullets.Count == 0)
+        {
+            return;
+        }
+
+        var bullets = new List<GameObject>(activeBullets);
+        foreach (GameObject bullet in bullets)
+        {
+            ReleaseBullet(bullet);
+        }
+
+        activeBullets.Clear();
     }
 }

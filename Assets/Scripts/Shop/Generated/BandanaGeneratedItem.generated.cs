@@ -5,6 +5,7 @@ public sealed class BandanaGeneratedItem : ShopItemDefinition
     private static readonly ItemStatModifier[] modifiers =
     {
         new ItemStatModifier("Damage", -10f, true),
+        new ItemStatModifier("Piercing", 1f, false),
     };
 
     public override string Id => "item.bandana";

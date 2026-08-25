@@ -4,7 +4,7 @@ public sealed class SilverBulletGeneratedItem : ShopItemDefinition
 {
     private static readonly ItemStatModifier[] modifiers =
     {
-        new ItemStatModifier("Damage", 25f, true),
+        new ItemStatModifier("Damage Against Bosses", 25f, true),
     };
 
     public override string Id => "item.silver_bullet";

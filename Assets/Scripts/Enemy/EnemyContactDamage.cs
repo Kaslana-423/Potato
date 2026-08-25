@@ -16,6 +16,16 @@ public sealed class EnemyContactDamage : MonoBehaviour
         }
     }
 
+    private void OnEnable()
+    {
+        nextHitTimes.Clear();
+    }
+
+    private void OnDisable()
+    {
+        nextHitTimes.Clear();
+    }
+
     private void OnTriggerEnter2D(Collider2D other)
     {
         TryDamagePlayer(other);
@@ -43,20 +53,12 @@ public sealed class EnemyContactDamage : MonoBehaviour
             return;
         }
 
-        PlayerHealth playerHealth = other.GetComponentInParent<PlayerHealth>();
+        // Only a collider owned by the PlayerHealth object is a player hurtbox.
+        // Weapon colliders are player children and must not forward contact damage to the player.
+        PlayerHealth playerHealth = other.GetComponent<PlayerHealth>();
         if (playerHealth == null)
         {
-            PlayerController player = other.GetComponentInParent<PlayerController>();
-            if (player == null)
-            {
-                return;
-            }
-
-            playerHealth = player.GetComponent<PlayerHealth>();
-            if (playerHealth == null)
-            {
-                playerHealth = player.gameObject.AddComponent<PlayerHealth>();
-            }
+            return;
         }
 
         if (nextHitTimes.TryGetValue(playerHealth, out float nextHitTime) && Time.time < nextHitTime)

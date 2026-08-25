@@ -128,6 +128,7 @@ public static class ShopItemPrefabCreator
 
             ShopOfferView view = root.AddComponent<ShopOfferView>();
             view.AutoBindReferences();
+            view.EnsureLockButton();
 
             GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, PrefabPath);
             AssetDatabase.SaveAssets();

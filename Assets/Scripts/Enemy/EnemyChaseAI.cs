@@ -55,7 +55,9 @@ public sealed class EnemyChaseAI : MonoBehaviour
             return;
         }
 
-        Vector2 velocity = direction.normalized * enemy.MoveSpeed;
+        float playerEnemySpeed = PlayerStats.Instance != null ? PlayerStats.Instance.EnemySpeed : 0f;
+        float speedMultiplier = Mathf.Max(0f, 1f + playerEnemySpeed / 100f);
+        Vector2 velocity = direction.normalized * enemy.MoveSpeed * speedMultiplier;
         if (rb != null)
         {
             rb.velocity = velocity;
@@ -69,6 +71,13 @@ public sealed class EnemyChaseAI : MonoBehaviour
     public void SetTarget(Transform newTarget)
     {
         target = newTarget;
+    }
+
+    private void OnDisable()
+    {
+        StopMoving();
+        target = null;
+        repathTimer = 0f;
     }
 
     private void StopMoving()

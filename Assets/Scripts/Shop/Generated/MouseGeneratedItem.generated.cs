@@ -6,6 +6,7 @@ public sealed class MouseGeneratedItem : ShopItemDefinition
     {
         new ItemStatModifier("Life Steal", 5f, true),
         new ItemStatModifier("Harvesting", -5f, false),
+        new ItemStatModifier("Enemies", 10f, true),
     };
 
     public override string Id => "item.mouse";

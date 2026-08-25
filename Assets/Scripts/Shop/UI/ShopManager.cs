@@ -5,6 +5,62 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
+[Serializable]
+public sealed class ShopRarityWeightProfile
+{
+    [SerializeField, Min(1)] private int wave = 1;
+    [SerializeField, Min(0f)] private float tier1Weight = 90f;
+    [SerializeField, Min(0f)] private float tier2Weight = 10f;
+    [SerializeField, Min(0f)] private float tier3Weight;
+    [SerializeField, Min(0f)] private float tier4Weight;
+
+    public int Wave => wave;
+
+    public ShopRarityWeightProfile()
+    {
+    }
+
+    public ShopRarityWeightProfile(
+        int wave,
+        float tier1Weight,
+        float tier2Weight,
+        float tier3Weight,
+        float tier4Weight)
+    {
+        this.wave = wave;
+        this.tier1Weight = tier1Weight;
+        this.tier2Weight = tier2Weight;
+        this.tier3Weight = tier3Weight;
+        this.tier4Weight = tier4Weight;
+    }
+
+    public float GetWeight(ShopRarity rarity)
+    {
+        switch (rarity)
+        {
+            case ShopRarity.Tier1:
+                return tier1Weight;
+            case ShopRarity.Tier2:
+                return tier2Weight;
+            case ShopRarity.Tier3:
+                return tier3Weight;
+            case ShopRarity.Tier4:
+                return tier4Weight;
+            default:
+                return 0f;
+        }
+    }
+
+    public void ClampValues()
+    {
+        wave = Mathf.Max(1, wave);
+        tier1Weight = Mathf.Max(0f, tier1Weight);
+        tier2Weight = Mathf.Max(0f, tier2Weight);
+        tier3Weight = Mathf.Max(0f, tier3Weight);
+        tier4Weight = Mathf.Max(0f, tier4Weight);
+    }
+}
+
 public sealed class ShopManager : MonoBehaviour
 {
     [Header("Window")]
@@ -20,11 +76,14 @@ public sealed class ShopManager : MonoBehaviour
 
     [Header("Optional UI References")]
     [SerializeField] private Button refreshButton;
+    [SerializeField] private TMP_Text refreshLabelText;
+    [SerializeField] private TMP_Text refreshCostText;
     [SerializeField] private TMP_Text statusText;
 
     [Header("Bags")]
     [SerializeField] private RelicBag relicBag;
     [SerializeField] private WeaponBag weaponBag;
+    [SerializeField] private PlayerWeaponEquipment playerWeaponEquipment;
 
     [Header("Currency")]
     [SerializeField] private PlayerWallet playerWallet;
@@ -32,17 +91,76 @@ public sealed class ShopManager : MonoBehaviour
 
     [Header("Refresh")]
     [SerializeField] private bool refreshOnStart = true;
+    [SerializeField, Min(0)] private int baseRefreshCost = 1;
+    [SerializeField, Min(0)] private int refreshCostIncrease = 1;
+
+    [Header("Rarity Progression")]
+    [SerializeField] private EnemySpawner waveSource;
+    [SerializeField] private List<ShopRarityWeightProfile> rarityWeightProfiles =
+        new List<ShopRarityWeightProfile>
+        {
+            new ShopRarityWeightProfile(1, 90f, 10f, 0f, 0f),
+            new ShopRarityWeightProfile(5, 60f, 28f, 10f, 0f),
+            new ShopRarityWeightProfile(10, 40f, 35f, 20f, 5f)
+        };
+    [SerializeField, Min(1)] private int tier2UnlockWave = 1;
+    [SerializeField, Min(1)] private int tier3UnlockWave = 3;
+    [SerializeField, Min(1)] private int tier4UnlockWave = 7;
+    [SerializeField, Min(0f)] private float luckTier1ReductionPerPoint = 0.25f;
+    [SerializeField, Min(0f)] private float luckTier2WeightPerPoint = 0.12f;
+    [SerializeField, Min(0f)] private float luckTier3WeightPerPoint = 0.08f;
+    [SerializeField, Min(0f)] private float luckTier4WeightPerPoint = 0.05f;
 
     private ShopOfferView[] offerViews = Array.Empty<ShopOfferView>();
     private readonly List<ShopContentDefinition> currentOffers = new List<ShopContentDefinition>();
+    private readonly Dictionary<string, int> purchaseCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
     private Button boundRefreshButton;
+    private int paidRefreshCount;
+    private int freeRefreshesUsed;
 
     public IReadOnlyList<ShopContentDefinition> CurrentOffers => currentOffers;
     public bool IsOpen { get; private set; }
+    public int FreeRefreshesRemaining => Mathf.Max(0, GetPlayerStat(stats => stats.FreeRerolls) - freeRefreshesUsed);
+    public int CurrentRefreshCost
+    {
+        get
+        {
+            if (FreeRefreshesRemaining > 0)
+            {
+                return 0;
+            }
+
+            int rawCost = Mathf.Max(0, baseRefreshCost + paidRefreshCount * refreshCostIncrease);
+            return ApplyPercentagePrice(rawCost, GetPlayerStat(stats => stats.RerollPrice), false);
+        }
+    }
+
+    public int GetPurchaseCount(string contentId)
+    {
+        return !string.IsNullOrWhiteSpace(contentId) && purchaseCounts.TryGetValue(contentId, out int count)
+            ? count
+            : 0;
+    }
 
     private void Awake()
     {
+        EnsureRarityProfiles();
         AutoBindReferences();
+    }
+
+    private void OnValidate()
+    {
+        offerCount = Mathf.Max(1, offerCount);
+        baseRefreshCost = Mathf.Max(0, baseRefreshCost);
+        refreshCostIncrease = Mathf.Max(0, refreshCostIncrease);
+        tier2UnlockWave = Mathf.Max(1, tier2UnlockWave);
+        tier3UnlockWave = Mathf.Max(tier2UnlockWave, tier3UnlockWave);
+        tier4UnlockWave = Mathf.Max(tier3UnlockWave, tier4UnlockWave);
+        luckTier1ReductionPerPoint = Mathf.Max(0f, luckTier1ReductionPerPoint);
+        luckTier2WeightPerPoint = Mathf.Max(0f, luckTier2WeightPerPoint);
+        luckTier3WeightPerPoint = Mathf.Max(0f, luckTier3WeightPerPoint);
+        luckTier4WeightPerPoint = Mathf.Max(0f, luckTier4WeightPerPoint);
+        EnsureRarityProfiles();
     }
 
     private void Start()
@@ -92,6 +210,8 @@ public sealed class ShopManager : MonoBehaviour
             refreshButton = FindComponent<Button>("RefreshButton", "Refresh Button");
         }
 
+        BindRefreshButtonTexts();
+
         if (statusText == null)
         {
             statusText = FindComponent<TMP_Text>("StatusText", "Status");
@@ -105,6 +225,36 @@ public sealed class ShopManager : MonoBehaviour
         if (weaponBag == null)
         {
             weaponBag = FindOrAddComponent<WeaponBag>("WeaponBag");
+        }
+
+        if (playerWeaponEquipment == null)
+        {
+            playerWeaponEquipment = FindObjectOfType<PlayerWeaponEquipment>(true);
+        }
+
+        if (playerWeaponEquipment == null && Application.isPlaying)
+        {
+            PlayerStats playerStats = PlayerStats.Instance != null
+                ? PlayerStats.Instance
+                : FindObjectOfType<PlayerStats>(true);
+            if (playerStats != null)
+            {
+                playerWeaponEquipment = playerStats.GetComponent<PlayerWeaponEquipment>();
+                if (playerWeaponEquipment == null)
+                {
+                    playerWeaponEquipment = playerStats.gameObject.AddComponent<PlayerWeaponEquipment>();
+                }
+            }
+        }
+
+        if (Application.isPlaying && weaponBag != null)
+        {
+            weaponBag.EnsureStartingWeapon();
+        }
+
+        if (playerWeaponEquipment != null && weaponBag != null)
+        {
+            playerWeaponEquipment.Bind(weaponBag, weaponBag.Count > 0);
         }
 
         if (playerWallet == null)
@@ -123,6 +273,11 @@ public sealed class ShopManager : MonoBehaviour
             {
                 currencyDisplay = gameObject.AddComponent<PlayerCurrencyDisplay>();
             }
+        }
+
+        if (waveSource == null)
+        {
+            waveSource = FindObjectOfType<EnemySpawner>(true);
         }
 
         currencyDisplay.AutoBindReferences();
@@ -149,10 +304,18 @@ public sealed class ShopManager : MonoBehaviour
 
     public void SetShopOpen(bool open)
     {
+        bool opening = open && !IsOpen;
         if (open)
         {
+            if (opening)
+            {
+                paidRefreshCount = 0;
+                freeRefreshesUsed = 0;
+            }
+
             SetShopVisible(true);
             EnsureUi();
+            UpdateRefreshButtonLabel();
 
             if (refreshWhenOpenedIfEmpty && currentOffers.Count == 0)
             {
@@ -169,14 +332,83 @@ public sealed class ShopManager : MonoBehaviour
     {
         EnsureUi();
 
-        currentOffers.Clear();
-        var pool = new List<ShopContentDefinition>(ShopContentCatalog.All);
-        Shuffle(pool);
+        GenerateOffersPreservingLocks();
+        SetStatus($"已生成 {currentOffers.Count} 个商品。点击卡片查看详情。");
+    }
 
-        int count = Mathf.Min(offerCount, pool.Count);
-        for (int index = 0; index < count; index++)
+    public void TryPaidRefresh()
+    {
+        EnsureUi();
+
+        PlayerWallet wallet = ResolvePlayerWallet();
+        bool usesFreeRefresh = FreeRefreshesRemaining > 0;
+        int cost = CurrentRefreshCost;
+        if (wallet == null)
         {
-            currentOffers.Add(pool[index]);
+            SetStatus("没有找到玩家金币数据，无法刷新商店。");
+            return;
+        }
+
+        if (!wallet.TrySpend(cost))
+        {
+            SetStatus($"刷新金币不足：需要 {cost}，当前 {wallet.Coins}。");
+            return;
+        }
+
+        GenerateOffersPreservingLocks();
+        if (usesFreeRefresh)
+        {
+            freeRefreshesUsed++;
+        }
+        else
+        {
+            paidRefreshCount++;
+        }
+
+        UpdateRefreshButtonLabel();
+        SetStatus(usesFreeRefresh
+            ? $"已使用免费刷新；锁定商品已保留。剩余免费刷新 {FreeRefreshesRemaining} 次。"
+            : $"花费 {cost} 金币刷新商店；锁定商品已保留。下次刷新需要 {CurrentRefreshCost}。");
+    }
+
+    private void GenerateOffersPreservingLocks()
+    {
+        var lockedOffers = new Dictionary<int, ShopContentDefinition>();
+        int previousSlotCount = Mathf.Min(currentOffers.Count, offerViews.Length);
+        for (int index = 0; index < previousSlotCount; index++)
+        {
+            ShopContentDefinition previousOffer = currentOffers[index];
+            ShopOfferView previousView = offerViews[index];
+            if (previousOffer != null
+                && previousView != null
+                && previousView.IsLocked
+                && !HasReachedPurchaseLimit(previousOffer))
+            {
+                lockedOffers[index] = previousOffer;
+            }
+        }
+
+        var lockedIds = new HashSet<string>(
+            lockedOffers.Values.Select(content => content.Id),
+            StringComparer.OrdinalIgnoreCase);
+        var pool = ShopContentCatalog.All
+            .Where(content => content != null
+                && !HasReachedPurchaseLimit(content)
+                && !lockedIds.Contains(content.Id))
+            .ToList();
+        ShopRarityWeights rarityWeights = BuildCurrentRarityWeights();
+
+        currentOffers.Clear();
+        for (int index = 0; index < offerCount; index++)
+        {
+            if (lockedOffers.TryGetValue(index, out ShopContentDefinition lockedOffer))
+            {
+                currentOffers.Add(lockedOffer);
+            }
+            else if (pool.Count > 0)
+            {
+                currentOffers.Add(TakeWeightedRandomOffer(pool, rarityWeights));
+            }
         }
 
         for (int index = 0; index < offerViews.Length; index++)
@@ -189,7 +421,15 @@ public sealed class ShopManager : MonoBehaviour
 
             if (index < currentOffers.Count)
             {
-                view.Bind(currentOffers[index], SelectOffer, TryPurchaseOffer);
+                ShopContentDefinition offer = currentOffers[index];
+                view.Bind(
+                    offer,
+                    SelectOffer,
+                    TryPurchaseOffer,
+                    GetPurchaseCount(offer.Id),
+                    HandleOfferLockChanged,
+                    lockedOffers.ContainsKey(index),
+                    GetOfferPrice(offer));
                 view.SetVisible(true);
             }
             else
@@ -198,7 +438,6 @@ public sealed class ShopManager : MonoBehaviour
             }
         }
 
-        SetStatus($"已刷新 {currentOffers.Count} 个商品。点击卡片查看详情。");
     }
 
     private void EnsureUi()
@@ -261,20 +500,82 @@ public sealed class ShopManager : MonoBehaviour
 
         if (boundRefreshButton != null)
         {
-            boundRefreshButton.onClick.RemoveListener(RefreshShop);
+            boundRefreshButton.onClick.RemoveListener(TryPaidRefresh);
         }
 
         boundRefreshButton = refreshButton;
         if (boundRefreshButton != null)
         {
-            boundRefreshButton.onClick.AddListener(RefreshShop);
+            boundRefreshButton.onClick.AddListener(TryPaidRefresh);
         }
+
+        BindRefreshButtonTexts();
+        UpdateRefreshButtonLabel();
+    }
+
+    private void BindRefreshButtonTexts()
+    {
+        if (refreshButton == null)
+        {
+            return;
+        }
+
+        if (refreshCostText == null)
+        {
+            refreshCostText = FindChildComponent<TMP_Text>(
+                refreshButton.transform,
+                "CoinCost",
+                "CostText",
+                "Cost Text");
+        }
+
+        if (refreshLabelText == null)
+        {
+            refreshLabelText = FindChildComponent<TMP_Text>(
+                refreshButton.transform,
+                "RefreshText",
+                "Refresh Text",
+                "Text (TMP)");
+        }
+    }
+
+    private void UpdateRefreshButtonLabel()
+    {
+        if (refreshCostText != null)
+        {
+            refreshCostText.text = FreeRefreshesRemaining > 0
+                ? $"0 ({FreeRefreshesRemaining})"
+                : CurrentRefreshCost.ToString();
+        }
+    }
+
+    private void UpdateOfferPrices()
+    {
+        int visibleCount = Mathf.Min(currentOffers.Count, offerViews.Length);
+        for (int index = 0; index < visibleCount; index++)
+        {
+            if (offerViews[index] != null && currentOffers[index] != null)
+            {
+                offerViews[index].SetPrice(GetOfferPrice(currentOffers[index]));
+            }
+        }
+    }
+
+    private void HandleOfferLockChanged(ShopOfferView view, bool locked)
+    {
+        SetStatus(locked ? "商品已锁定，刷新时会保留。" : "商品已解除锁定。");
     }
 
     private void SelectOffer(ShopContentDefinition content)
     {
         if (content == null)
         {
+            return;
+        }
+
+        if (HasReachedPurchaseLimit(content))
+        {
+            SetStatus($"{content.LocalizedDisplayName} 已达到购买上限。");
             return;
         }
 
@@ -285,6 +586,12 @@ public sealed class ShopManager : MonoBehaviour
     {
         if (content == null)
         {
+            return;
+        }
+
+        if (HasReachedPurchaseLimit(content))
+        {
+            SetStatus($"{content.LocalizedDisplayName} 已达到购买上限。");
             return;
         }
 
@@ -314,7 +621,7 @@ public sealed class ShopManager : MonoBehaviour
         }
 
         PlayerWallet wallet = ResolvePlayerWallet();
-        int price = Mathf.Max(0, content.BasePrice);
+        int price = GetOfferPrice(content);
         if (wallet == null)
         {
             SetStatus("没有找到玩家金币数据，无法购买。");
@@ -339,18 +646,88 @@ public sealed class ShopManager : MonoBehaviour
 
         if (purchased)
         {
+            RegisterPurchase(content);
+
+            ShopItemEffectResult effectResult = default;
+            ShopItemDefinition item = content as ShopItemDefinition;
+            bool hasItemEffectResult = item != null;
+            if (hasItemEffectResult)
+            {
+                effectResult = ShopItemEffectApplier.Apply(item, PlayerStats.Instance);
+                UpdateOfferPrices();
+                UpdateRefreshButtonLabel();
+            }
+
             if (offerView != null)
             {
                 offerView.MarkPurchased();
             }
 
-            SetStatus($"已购买 {content.LocalizedDisplayName}，花费 {price} 金币，放入{bagName}。");
+            string effectStatus = hasItemEffectResult ? BuildItemEffectStatus(item, effectResult) : string.Empty;
+            if (content.Kind == ShopContentKind.Weapon)
+            {
+                effectStatus += BuildWeaponCombinationStatus(weaponBag);
+            }
+            SetStatus($"已购买 {content.LocalizedDisplayName}，花费 {price} 金币，放入{bagName}。{effectStatus}");
         }
         else
         {
             wallet.AddCoins(price);
             SetStatus(failureReason);
         }
+    }
+
+    private bool HasReachedPurchaseLimit(ShopContentDefinition content)
+    {
+        ShopItemDefinition item = content as ShopItemDefinition;
+        return item != null
+            && item.PurchaseLimit > 0
+            && GetPurchaseCount(item.Id) >= item.PurchaseLimit;
+    }
+
+    private void RegisterPurchase(ShopContentDefinition content)
+    {
+        if (content == null || string.IsNullOrWhiteSpace(content.Id))
+        {
+            return;
+        }
+
+        purchaseCounts[content.Id] = GetPurchaseCount(content.Id) + 1;
+    }
+
+    private static string BuildItemEffectStatus(ShopItemDefinition item, ShopItemEffectResult result)
+    {
+        if (item == null || item.Modifiers.Count == 0)
+        {
+            return " 该道具的特殊效果尚未接入。";
+        }
+
+        if (!result.HasPlayerStats && result.UnsupportedStats.Count > 0)
+        {
+            return " 未找到玩家属性组件，基础属性暂未应用。";
+        }
+
+        string applied = result.AppliedModifierCount > 0
+            ? $" 已应用 {result.AppliedModifierCount} 项基础属性。"
+            : "";
+        string unsupported = result.UnsupportedStats.Count > 0
+            ? $" 尚未支持：{string.Join("、", result.UnsupportedStats)}。"
+            : "";
+
+        return applied + unsupported;
+    }
+
+    private static string BuildWeaponCombinationStatus(WeaponBag bag)
+    {
+        if (bag == null || !bag.LastAddCombined || bag.LastAddedWeapon == null)
+        {
+            return string.Empty;
+        }
+
+        string chainLabel = bag.LastCombinationCount > 1
+            ? $"，连续合成 {bag.LastCombinationCount} 次"
+            : string.Empty;
+        return $" 已自动合成为 {bag.LastAddedWeapon.LocalizedDisplayName}（{bag.LastAddedWeapon.RarityLabel}）{chainLabel}。";
     }
 
     private PlayerWallet ResolvePlayerWallet()
@@ -363,6 +740,30 @@ public sealed class ShopManager : MonoBehaviour
         return playerWallet;
     }
 
+    private int GetOfferPrice(ShopContentDefinition content)
+    {
+        return content == null
+            ? 0
+            : ApplyPercentagePrice(content.BasePrice, GetPlayerStat(stats => stats.ItemsPrice), true);
+    }
+
+    private static int ApplyPercentagePrice(int basePrice, int percentageModifier, bool keepPositivePrice)
+    {
+        if (basePrice <= 0)
+        {
+            return 0;
+        }
+
+        int adjustedPrice = Mathf.RoundToInt(basePrice * Mathf.Max(0f, 1f + percentageModifier / 100f));
+        return keepPositivePrice ? Mathf.Max(1, adjustedPrice) : Mathf.Max(0, adjustedPrice);
+    }
+
+    private static int GetPlayerStat(Func<PlayerStats, int> selector)
+    {
+        PlayerStats stats = PlayerStats.Instance;
+        return stats != null && selector != null ? selector(stats) : 0;
+    }
+
     private void SetStatus(string message)
     {
         if (statusText != null)
@@ -371,12 +772,205 @@ public sealed class ShopManager : MonoBehaviour
         }
     }
 
-    private static void Shuffle(IList<ShopContentDefinition> contents)
+    private ShopRarityWeights BuildCurrentRarityWeights()
     {
-        for (int index = contents.Count - 1; index > 0; index--)
+        EnsureRarityProfiles();
+
+        int wave = waveSource != null ? Mathf.Max(1, waveSource.CurrentWave) : 1;
+        int luck = PlayerStats.Instance != null ? PlayerStats.Instance.Luck : 0;
+        ShopRarityWeightProfile lower = rarityWeightProfiles[0];
+        ShopRarityWeightProfile upper = rarityWeightProfiles[rarityWeightProfiles.Count - 1];
+
+        for (int index = 0; index < rarityWeightProfiles.Count; index++)
         {
-            int swapIndex = UnityEngine.Random.Range(0, index + 1);
-            (contents[index], contents[swapIndex]) = (contents[swapIndex], contents[index]);
+            ShopRarityWeightProfile profile = rarityWeightProfiles[index];
+            if (profile.Wave <= wave)
+            {
+                lower = profile;
+            }
+
+            if (profile.Wave >= wave)
+            {
+                upper = profile;
+                break;
+            }
+        }
+
+        float interpolation = lower.Wave == upper.Wave
+            ? 0f
+            : Mathf.InverseLerp(lower.Wave, upper.Wave, wave);
+        float tier1 = Mathf.Lerp(lower.GetWeight(ShopRarity.Tier1), upper.GetWeight(ShopRarity.Tier1), interpolation);
+        float tier2 = Mathf.Lerp(lower.GetWeight(ShopRarity.Tier2), upper.GetWeight(ShopRarity.Tier2), interpolation);
+        float tier3 = Mathf.Lerp(lower.GetWeight(ShopRarity.Tier3), upper.GetWeight(ShopRarity.Tier3), interpolation);
+        float tier4 = Mathf.Lerp(lower.GetWeight(ShopRarity.Tier4), upper.GetWeight(ShopRarity.Tier4), interpolation);
+
+        tier1 = Mathf.Max(0f, tier1 - luck * luckTier1ReductionPerPoint);
+        tier2 = wave >= tier2UnlockWave
+            ? Mathf.Max(0f, tier2 + luck * luckTier2WeightPerPoint)
+            : 0f;
+        tier3 = wave >= tier3UnlockWave
+            ? Mathf.Max(0f, tier3 + luck * luckTier3WeightPerPoint)
+            : 0f;
+        tier4 = wave >= tier4UnlockWave
+            ? Mathf.Max(0f, tier4 + luck * luckTier4WeightPerPoint)
+            : 0f;
+
+        return new ShopRarityWeights(tier1, tier2, tier3, tier4);
+    }
+
+    private void EnsureRarityProfiles()
+    {
+        if (rarityWeightProfiles == null)
+        {
+            rarityWeightProfiles = new List<ShopRarityWeightProfile>();
+        }
+
+        rarityWeightProfiles.RemoveAll(profile => profile == null);
+        if (rarityWeightProfiles.Count == 0)
+        {
+            rarityWeightProfiles.Add(new ShopRarityWeightProfile(1, 90f, 10f, 0f, 0f));
+            rarityWeightProfiles.Add(new ShopRarityWeightProfile(5, 60f, 28f, 10f, 0f));
+            rarityWeightProfiles.Add(new ShopRarityWeightProfile(10, 40f, 35f, 20f, 5f));
+        }
+
+        foreach (ShopRarityWeightProfile profile in rarityWeightProfiles)
+        {
+            profile.ClampValues();
+        }
+
+        rarityWeightProfiles.Sort((left, right) => left.Wave.CompareTo(right.Wave));
+    }
+
+    private static ShopContentDefinition TakeWeightedRandomOffer(
+        List<ShopContentDefinition> pool,
+        ShopRarityWeights weights)
+    {
+        float totalWeight = 0f;
+        ShopRarity lastWeightedRarity = ShopRarity.Tier1;
+        for (int tier = (int)ShopRarity.Tier1; tier <= (int)ShopRarity.Tier4; tier++)
+        {
+            ShopRarity rarity = (ShopRarity)tier;
+            float weight = weights.GetWeight(rarity);
+            if (weight <= 0f || !ContainsRarity(pool, rarity))
+            {
+                continue;
+            }
+
+            lastWeightedRarity = rarity;
+            totalWeight += weight;
+        }
+
+        if (totalWeight <= 0f)
+        {
+            int fallbackIndex = UnityEngine.Random.Range(0, pool.Count);
+            ShopContentDefinition fallback = pool[fallbackIndex];
+            pool.RemoveAt(fallbackIndex);
+            return fallback;
+        }
+
+        float roll = UnityEngine.Random.value * totalWeight;
+        ShopRarity selectedRarity = lastWeightedRarity;
+        for (int tier = (int)ShopRarity.Tier1; tier <= (int)ShopRarity.Tier4; tier++)
+        {
+            ShopRarity rarity = (ShopRarity)tier;
+            float weight = weights.GetWeight(rarity);
+            if (weight <= 0f || !ContainsRarity(pool, rarity))
+            {
+                continue;
+            }
+
+            roll -= weight;
+            if (roll <= 0f)
+            {
+                selectedRarity = rarity;
+                break;
+            }
+        }
+
+        int matchingCount = 0;
+        for (int index = 0; index < pool.Count; index++)
+        {
+            if (pool[index].Rarity == selectedRarity)
+            {
+                matchingCount++;
+            }
+        }
+
+        if (matchingCount == 0)
+        {
+            int fallbackIndex = UnityEngine.Random.Range(0, pool.Count);
+            ShopContentDefinition fallback = pool[fallbackIndex];
+            pool.RemoveAt(fallbackIndex);
+            return fallback;
+        }
+
+        int selectedOrdinal = UnityEngine.Random.Range(0, matchingCount);
+        for (int index = 0; index < pool.Count; index++)
+        {
+            if (pool[index].Rarity != selectedRarity)
+            {
+                continue;
+            }
+
+            if (selectedOrdinal == 0)
+            {
+                ShopContentDefinition selected = pool[index];
+                pool.RemoveAt(index);
+                return selected;
+            }
+
+            selectedOrdinal--;
+        }
+
+        int finalFallbackIndex = UnityEngine.Random.Range(0, pool.Count);
+        ShopContentDefinition finalFallback = pool[finalFallbackIndex];
+        pool.RemoveAt(finalFallbackIndex);
+        return finalFallback;
+    }
+
+    private static bool ContainsRarity(List<ShopContentDefinition> pool, ShopRarity rarity)
+    {
+        for (int index = 0; index < pool.Count; index++)
+        {
+            if (pool[index].Rarity == rarity)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private readonly struct ShopRarityWeights
+    {
+        private readonly float tier1;
+        private readonly float tier2;
+        private readonly float tier3;
+        private readonly float tier4;
+
+        public ShopRarityWeights(float tier1, float tier2, float tier3, float tier4)
+        {
+            this.tier1 = tier1;
+            this.tier2 = tier2;
+            this.tier3 = tier3;
+            this.tier4 = tier4;
+        }
+
+        public float GetWeight(ShopRarity rarity)
+        {
+            switch (rarity)
+            {
+                case ShopRarity.Tier1:
+                    return tier1;
+                case ShopRarity.Tier2:
+                    return tier2;
+                case ShopRarity.Tier3:
+                    return tier3;
+                case ShopRarity.Tier4:
+                    return tier4;
+                default:
+                    return 0f;
+            }
         }
     }
 
@@ -400,6 +994,27 @@ public sealed class ShopManager : MonoBehaviour
     {
         Transform child = FindDescendant(names);
         return child != null ? child.GetComponent<T>() : null;
+    }
+
+    private static T FindChildComponent<T>(Transform root, params string[] names) where T : Component
+    {
+        if (root == null)
+        {
+            return null;
+        }
+
+        foreach (Transform child in root.GetComponentsInChildren<Transform>(true))
+        {
+            foreach (string objectName in names)
+            {
+                if (child.name == objectName)
+                {
+                    return child.GetComponent<T>();
+                }
+            }
+        }
+
+        return null;
     }
 
     private T FindOrAddComponent<T>(params string[] names) where T : Component

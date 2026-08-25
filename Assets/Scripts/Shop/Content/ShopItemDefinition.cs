@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using UnityEngine;
 
 public readonly struct ItemStatModifier
 {
@@ -44,5 +45,66 @@ public abstract class ShopItemDefinition : ShopContentDefinition
         return Modifiers.Count == 0
             ? string.Empty
             : string.Join("\n", Modifiers.Select(modifier => modifier.ToString()));
+    }
+}
+
+public readonly struct ShopItemEffectResult
+{
+    public ShopItemEffectResult(int appliedModifierCount, IReadOnlyList<string> unsupportedStats, bool hasPlayerStats)
+    {
+        AppliedModifierCount = appliedModifierCount;
+        UnsupportedStats = unsupportedStats ?? Array.Empty<string>();
+        HasPlayerStats = hasPlayerStats;
+    }
+
+    public int AppliedModifierCount { get; }
+    public IReadOnlyList<string> UnsupportedStats { get; }
+    public bool HasPlayerStats { get; }
+}
+
+public static class ShopItemEffectApplier
+{
+    public static ShopItemEffectResult Apply(ShopItemDefinition item, PlayerStats playerStats)
+    {
+        if (item == null)
+        {
+            return new ShopItemEffectResult(0, Array.Empty<string>(), playerStats != null);
+        }
+
+        var unsupportedStats = new List<string>();
+        if (playerStats == null)
+        {
+            foreach (ItemStatModifier modifier in item.Modifiers)
+            {
+                AddUnique(unsupportedStats, modifier.StatName);
+            }
+
+            return new ShopItemEffectResult(0, unsupportedStats, false);
+        }
+
+        int appliedCount = 0;
+        foreach (ItemStatModifier modifier in item.Modifiers)
+        {
+            if (!PlayerStats.TryParseStatId(modifier.StatName, out PlayerStatId statId))
+            {
+                AddUnique(unsupportedStats, modifier.StatName);
+                continue;
+            }
+
+            // 百分比属性在 PlayerStats 中本身以“百分点”整数保存，因此和固定值使用同一加法入口。
+            playerStats.AddStat(statId, Mathf.RoundToInt(modifier.Value));
+            appliedCount++;
+        }
+
+        return new ShopItemEffectResult(appliedCount, unsupportedStats, true);
+    }
+
+    private static void AddUnique(ICollection<string> values, string value)
+    {
+        string normalized = string.IsNullOrWhiteSpace(value) ? "未知属性" : value.Trim();
+        if (!values.Contains(normalized))
+        {
+            values.Add(normalized);
+        }
     }
 }

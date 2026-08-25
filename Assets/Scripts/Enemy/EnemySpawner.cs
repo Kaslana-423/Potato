@@ -15,8 +15,8 @@ public sealed class EnemySpawner : MonoBehaviour
     [SerializeField] private ShopManager shopManager;
     [SerializeField] private GameObject shopRoot;
     [SerializeField] private Button shopExitButton;
-    [SerializeField, Min(0f)] private float shopOpenDelaySeconds = 0f;
-    [SerializeField, Min(0f)] private float nextLevelDelaySeconds = 1f;
+    [SerializeField, Min(0f)] private float shopOpenDelaySeconds = 1f;
+    [SerializeField, Min(0f)] private float nextLevelDelaySeconds = 0.5f;
     [SerializeField] private bool hideShopOnStart = true;
     [SerializeField] private bool refreshShopWhenOpened = true;
 
@@ -99,6 +99,7 @@ public sealed class EnemySpawner : MonoBehaviour
     private void Start()
     {
         EnsureSpawnPool();
+        PrewarmEnemyPools();
         EnsureLifetimeTracker();
         EnsureShopFlow();
         shopFlow.AutoBind(ref shopManager, shopRoot, ref shopExitButton);
@@ -275,6 +276,7 @@ public sealed class EnemySpawner : MonoBehaviour
         int batchSize = spawnGroup
             ? UnityEngine.Random.Range(state.rule.groupBatchMin, state.rule.groupBatchMax + 1)
             : UnityEngine.Random.Range(state.rule.singleBatchMin, state.rule.singleBatchMax + 1);
+        batchSize = ApplyEnemyCountModifier(batchSize);
 
         Vector3 center = GetSpawnPosition();
         List<Vector3> positions = spawnGroup
@@ -303,6 +305,15 @@ public sealed class EnemySpawner : MonoBehaviour
 
         StartCoroutine(SpawnAfterWarning(state.definition, positions, runId));
         return batchSize;
+    }
+
+    private static int ApplyEnemyCountModifier(int baseCount)
+    {
+        int enemyCountModifier = PlayerStats.Instance != null ? PlayerStats.Instance.Enemies : 0;
+        float scaledCount = Mathf.Max(0f, baseCount * (1f + enemyCountModifier / 100f));
+        int wholeEnemies = Mathf.FloorToInt(scaledCount);
+        float fractionalEnemy = scaledCount - wholeEnemies;
+        return wholeEnemies + (UnityEngine.Random.value < fractionalEnemy ? 1 : 0);
     }
 
     private bool ShouldSpawnGroup(EnemyWaveEnemySpawnRule rule)
@@ -454,6 +465,28 @@ public sealed class EnemySpawner : MonoBehaviour
         if (spawnPool == null)
         {
             spawnPool = gameObject.AddComponent<EnemySpawnPool>();
+        }
+    }
+
+    private void PrewarmEnemyPools()
+    {
+        if (spawnPool == null)
+        {
+            return;
+        }
+
+        spawnPool.Prewarm(defaultEnemyPrefab);
+        if (enemyPrefabs == null)
+        {
+            return;
+        }
+
+        foreach (EnemyPrefabBinding binding in enemyPrefabs)
+        {
+            if (binding != null && binding.prefab != null)
+            {
+                spawnPool.Prewarm(binding.prefab);
+            }
         }
     }
 

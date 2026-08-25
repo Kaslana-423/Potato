@@ -6,6 +6,8 @@ public sealed class EnemySpawnPool : MonoBehaviour
 {
     [SerializeField, Min(0)] private int defaultCapacity = 32;
     [SerializeField, Min(1)] private int maxPoolSizePerPrefab = 256;
+    [SerializeField, Min(0)] private int prewarmCountPerPrefab = 8;
+    [SerializeField] private bool collectionChecks = true;
     [SerializeField] private Transform poolRoot;
 
     [Header("Coin Drops")]
@@ -20,6 +22,41 @@ public sealed class EnemySpawnPool : MonoBehaviour
     private ObjectPool<EnemyBase> fallbackPool;
     private static Sprite fallbackSprite;
 
+    public int ActiveCount => activeEnemies.Count;
+    public int InactiveCount
+    {
+        get
+        {
+            int count = fallbackPool != null ? fallbackPool.CountInactive : 0;
+            foreach (ObjectPool<EnemyBase> pool in prefabPools.Values)
+            {
+                count += pool.CountInactive;
+            }
+
+            return count;
+        }
+    }
+
+    private void OnValidate()
+    {
+        defaultCapacity = Mathf.Max(0, defaultCapacity);
+        maxPoolSizePerPrefab = Mathf.Max(1, maxPoolSizePerPrefab);
+        prewarmCountPerPrefab = Mathf.Clamp(prewarmCountPerPrefab, 0, maxPoolSizePerPrefab);
+    }
+
+    private void OnDestroy()
+    {
+        foreach (ObjectPool<EnemyBase> pool in prefabPools.Values)
+        {
+            pool.Clear();
+        }
+
+        fallbackPool?.Clear();
+        prefabPools.Clear();
+        instancePools.Clear();
+        activeEnemies.Clear();
+    }
+
     public EnemyBase Get(EnemyBase prefab, Vector3 position, Quaternion rotation)
     {
         ObjectPool<EnemyBase> pool = prefab != null ? GetPrefabPool(prefab) : GetFallbackPool();
@@ -31,6 +68,18 @@ public sealed class EnemySpawnPool : MonoBehaviour
         enemy.gameObject.SetActive(true);
         activeEnemies.Add(enemy);
         return enemy;
+    }
+
+    public void Prewarm(EnemyBase prefab)
+    {
+        if (prefab != null)
+        {
+            GetPrefabPool(prefab);
+        }
+        else
+        {
+            GetFallbackPool();
+        }
     }
 
     public bool Release(EnemyBase enemy)
@@ -74,11 +123,12 @@ public sealed class EnemySpawnPool : MonoBehaviour
             OnGet,
             OnRelease,
             OnDestroyPooledEnemy,
-            true,
+            collectionChecks,
             defaultCapacity,
             maxPoolSizePerPrefab);
 
         prefabPools.Add(prefab, pool);
+        Prewarm(pool);
         return pool;
     }
 
@@ -94,10 +144,11 @@ public sealed class EnemySpawnPool : MonoBehaviour
             OnGet,
             OnRelease,
             OnDestroyPooledEnemy,
-            true,
+            collectionChecks,
             defaultCapacity,
             maxPoolSizePerPrefab);
 
+        Prewarm(fallbackPool);
         return fallbackPool;
     }
 
@@ -184,6 +235,7 @@ public sealed class EnemySpawnPool : MonoBehaviour
     private void OnRelease(EnemyBase enemy)
     {
         ResetPhysics(enemy);
+        enemy.PrepareForPool();
         Transform enemyTransform = enemy.transform;
         if (poolRoot != null)
         {
@@ -191,6 +243,26 @@ public sealed class EnemySpawnPool : MonoBehaviour
         }
 
         enemy.gameObject.SetActive(false);
+    }
+
+    private void Prewarm(ObjectPool<EnemyBase> pool)
+    {
+        int count = Mathf.Min(prewarmCountPerPrefab, maxPoolSizePerPrefab);
+        if (count <= 0)
+        {
+            return;
+        }
+
+        var enemies = new List<EnemyBase>(count);
+        for (int index = 0; index < count; index++)
+        {
+            enemies.Add(pool.Get());
+        }
+
+        foreach (EnemyBase enemy in enemies)
+        {
+            pool.Release(enemy);
+        }
     }
 
     private void OnDestroyPooledEnemy(EnemyBase enemy)

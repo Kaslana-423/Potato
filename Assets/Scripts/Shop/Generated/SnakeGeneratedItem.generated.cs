@@ -5,6 +5,7 @@ public sealed class SnakeGeneratedItem : ShopItemDefinition
     private static readonly ItemStatModifier[] modifiers =
     {
         new ItemStatModifier("Max HP", -1f, false),
+        new ItemStatModifier("Burning Spread", 1f, false),
     };
 
     public override string Id => "item.snake";

@@ -5,6 +5,7 @@ public sealed class WhiteFlagGeneratedItem : ShopItemDefinition
     private static readonly ItemStatModifier[] modifiers =
     {
         new ItemStatModifier("Harvesting", 5f, false),
+        new ItemStatModifier("Enemies", -5f, true),
     };
 
     public override string Id => "item.white_flag";

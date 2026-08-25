@@ -5,6 +5,7 @@ public sealed class SpyglassDLCGeneratedItem : ShopItemDefinition
     private static readonly ItemStatModifier[] modifiers =
     {
         new ItemStatModifier("Range", 10f, false),
+        new ItemStatModifier("Reroll Price", -25f, true),
     };
 
     public override string Id => "item.spyglass_dlc";

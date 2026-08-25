@@ -6,6 +6,7 @@ public sealed class HoneyGeneratedItem : ShopItemDefinition
     {
         new ItemStatModifier("Ranged Damage", 3f, false),
         new ItemStatModifier("Explosion Damage", 10f, true),
+        new ItemStatModifier("Explosion Size", 5f, true),
         new ItemStatModifier("Dodge", -3f, true),
         new ItemStatModifier("Speed", -3f, true),
     };

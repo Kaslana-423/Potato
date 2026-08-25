@@ -5,6 +5,7 @@ public sealed class SnailGeneratedItem : ShopItemDefinition
     private static readonly ItemStatModifier[] modifiers =
     {
         new ItemStatModifier("Speed", -3f, true),
+        new ItemStatModifier("Enemy Speed", -8f, true),
     };
 
     public override string Id => "item.snail";

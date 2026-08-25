@@ -26,6 +26,7 @@ public class EnemyBase : MonoBehaviour
     [SerializeField, Range(0f, 1f)] private float lootCrateDropChance = 0.01f;
 
     private bool initialized;
+    private bool dead;
 
     public event Action<EnemyBase> Died;
 
@@ -72,10 +73,16 @@ public class EnemyBase : MonoBehaviour
         lootCrateDropChance = definition.LootCrateDropChance;
         gameObject.name = $"Enemy - {displayName}";
         initialized = true;
+        dead = false;
     }
 
     public virtual void TakeDamage(float damage)
     {
+        if (dead || !gameObject.activeInHierarchy)
+        {
+            return;
+        }
+
         currentHealth -= Mathf.Max(0f, damage);
         if (currentHealth <= 0)
         {
@@ -85,6 +92,12 @@ public class EnemyBase : MonoBehaviour
 
     protected virtual void Die()
     {
+        if (dead)
+        {
+            return;
+        }
+
+        dead = true;
         EnemyCoinDropper coinDropper = GetComponent<EnemyCoinDropper>();
         if (coinDropper != null)
         {
@@ -96,6 +109,14 @@ public class EnemyBase : MonoBehaviour
         {
             Destroy(gameObject);
         }
+    }
+
+    public virtual void PrepareForPool()
+    {
+        dead = true;
+        initialized = false;
+        currentHealth = 0f;
+        Died = null;
     }
 
     public Vector3 GetPosition()

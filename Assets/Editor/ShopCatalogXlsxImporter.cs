@@ -77,10 +77,15 @@ public static class ShopCatalogXlsxImporter
             BuildRegistrySource(registryEntries));
 
         AssetDatabase.Refresh();
-        EditorUtility.DisplayDialog(
-            "Potato Shop",
-            $"Generated {weaponCount} weapon scripts and {itemCount} item scripts.",
-            "OK");
+        string resultMessage = $"Generated {weaponCount} weapon scripts and {itemCount} item scripts.";
+        if (Application.isBatchMode)
+        {
+            Debug.Log(resultMessage);
+        }
+        else
+        {
+            EditorUtility.DisplayDialog("Potato Shop", resultMessage, "OK");
+        }
     }
 
     private static int GenerateWeapons(
@@ -196,7 +201,108 @@ public static class ShopCatalogXlsxImporter
                 $"new ItemStatModifier({ToLiteral(statName)}, {ToFloatLiteral(value)}, {isPercent.ToString().ToLowerInvariant()})");
         }
 
+        AppendDescriptionDerivedModifiers(Get(row, "Effects"), modifiers);
+
         return modifiers;
+    }
+
+    private static void AppendDescriptionDerivedModifiers(string effects, ICollection<string> modifiers)
+    {
+        if (string.IsNullOrWhiteSpace(effects))
+        {
+            return;
+        }
+
+        AddMatchedModifier(effects, @"([+-]\s*\d+(?:\.\d+)?)\s*HP recovered from consumables", "Consumable Heal", false, modifiers);
+        AddMatchedModifier(effects, @"([+-]\s*\d+(?:\.\d+)?)\s*%\s*Explosion Size", "Explosion Size", true, modifiers);
+        AddMatchedModifier(effects, @"Projectiles pierce through\s*(\d+(?:\.\d+)?)\s*additional target", "Piercing", false, modifiers);
+        AddMatchedModifier(effects, @"projectiles gain\s*([+-]\s*\d+(?:\.\d+)?)\s*bounce", "Bounces", false, modifiers);
+        AddMatchedModifier(effects, @"([+-]\s*\d+(?:\.\d+)?)\s*free reroll", "Free Rerolls", false, modifiers);
+        AddMatchedModifier(effects, @"([+-]\s*\d+(?:\.\d+)?)\s*%\s*Structure attack speed", "Structure Attack Speed", true, modifiers);
+        AddMatchedModifier(effects, @"([+-]\s*\d+(?:\.\d+)?)\s*%\s*Enemy Speed(?!\s+during the next wave)", "Enemy Speed", true, modifiers);
+        AddMatchedModifier(effects, @"([+-]\s*\d+(?:\.\d+)?)\s*%\s*Enemies(?:\s|$)", "Enemies", true, modifiers);
+        AddMatchedModifier(effects, @"([+-]\s*\d+(?:\.\d+)?)\s*%\s*Reroll Price", "Reroll Price", true, modifiers);
+        AddMatchedModifier(effects, @"([+-]?\s*\d+(?:\.\d+)?)\s*%\s*chance to double the value of picked up materials", "Double Material Chance", true, modifiers);
+        AddMatchedModifier(effects, @"([+-]?\s*\d+(?:\.\d+)?)\s*%\s*chance to heal 1 HP when picking up a material", "Materials Healing", true, modifiers);
+
+        Match bossDamage = Regex.Match(
+            effects,
+            @"([+-]\s*\d+(?:\.\d+)?)\s*%\s*damage against bosses and elites",
+            RegexOptions.IgnoreCase);
+        if (bossDamage.Success && TryParseMatchedFloat(bossDamage.Groups[1].Value, out float bossDamageValue))
+        {
+            RemoveModifier(modifiers, "Damage");
+            AddModifierIfMissing(modifiers, "Damage Against Bosses", bossDamageValue, true);
+        }
+
+        if (Regex.IsMatch(effects, @"Burning spreads to an additional nearby enemy", RegexOptions.IgnoreCase))
+        {
+            AddModifierIfMissing(modifiers, "Burning Spread", 1f, false);
+        }
+
+        Match burningSpeed = Regex.Match(
+            effects,
+            @"Burning activates\s*(\d+(?:\.\d+)?)\s*%\s*(faster|slower)",
+            RegexOptions.IgnoreCase);
+        if (burningSpeed.Success && TryParseMatchedFloat(burningSpeed.Groups[1].Value, out float burningValue))
+        {
+            if (string.Equals(burningSpeed.Groups[2].Value, "slower", StringComparison.OrdinalIgnoreCase))
+            {
+                burningValue = -burningValue;
+            }
+
+            AddModifierIfMissing(modifiers, "Burning Speed", burningValue, true);
+        }
+
+        if (Regex.IsMatch(effects, @"\bMore trees spawn\b", RegexOptions.IgnoreCase))
+        {
+            AddModifierIfMissing(modifiers, "Trees", 1f, false);
+        }
+    }
+
+    private static void AddMatchedModifier(
+        string effects,
+        string pattern,
+        string statName,
+        bool isPercent,
+        ICollection<string> modifiers)
+    {
+        Match match = Regex.Match(effects, pattern, RegexOptions.IgnoreCase);
+        if (match.Success && TryParseMatchedFloat(match.Groups[1].Value, out float value))
+        {
+            AddModifierIfMissing(modifiers, statName, value, isPercent);
+        }
+    }
+
+    private static bool TryParseMatchedFloat(string value, out float parsed)
+    {
+        return TryParseFloat((value ?? string.Empty).Replace(" ", string.Empty), out parsed);
+    }
+
+    private static void AddModifierIfMissing(
+        ICollection<string> modifiers,
+        string statName,
+        float value,
+        bool isPercent)
+    {
+        string statLiteral = ToLiteral(statName);
+        if (modifiers.Any(modifier => modifier.Contains(statLiteral)))
+        {
+            return;
+        }
+
+        modifiers.Add(
+            $"new ItemStatModifier({statLiteral}, {ToFloatLiteral(value)}, {isPercent.ToString().ToLowerInvariant()})");
+    }
+
+    private static void RemoveModifier(ICollection<string> modifiers, string statName)
+    {
+        string statLiteral = ToLiteral(statName);
+        string existing = modifiers.FirstOrDefault(modifier => modifier.Contains(statLiteral));
+        if (existing != null)
+        {
+            modifiers.Remove(existing);
+        }
     }
 
     private static IEnumerable<Dictionary<string, string>> ReadRows(string xlsxPath)

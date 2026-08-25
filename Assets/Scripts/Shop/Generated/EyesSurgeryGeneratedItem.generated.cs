@@ -6,6 +6,7 @@ public sealed class EyesSurgeryGeneratedItem : ShopItemDefinition
     {
         new ItemStatModifier("Elemental Damage", 1f, false),
         new ItemStatModifier("Range", -10f, false),
+        new ItemStatModifier("Burning Speed", 20f, true),
     };
 
     public override string Id => "item.eyes_surgery";

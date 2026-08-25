@@ -7,6 +7,7 @@ public sealed class MetalDetectorGeneratedItem : ShopItemDefinition
         new ItemStatModifier("Damage", -5f, true),
         new ItemStatModifier("Engineering", 2f, false),
         new ItemStatModifier("Luck", 6f, false),
+        new ItemStatModifier("Double Material Chance", 5f, true),
     };
 
     public override string Id => "item.metal_detector";

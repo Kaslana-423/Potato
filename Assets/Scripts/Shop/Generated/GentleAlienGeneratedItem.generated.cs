@@ -6,6 +6,7 @@ public sealed class GentleAlienGeneratedItem : ShopItemDefinition
     {
         new ItemStatModifier("Max HP", 2f, false),
         new ItemStatModifier("Damage", 5f, true),
+        new ItemStatModifier("Enemies", 5f, true),
     };
 
     public override string Id => "item.gentle_alien";

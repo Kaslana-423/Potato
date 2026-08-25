@@ -33,7 +33,7 @@ public sealed class CoinPickup : MonoBehaviour
         }
 
         float distance = Vector2.Distance(transform.position, player.position);
-        if (!collecting && distance > magnetRadius)
+        if (!collecting && distance > GetEffectiveMagnetRadius())
         {
             return;
         }
@@ -74,7 +74,34 @@ public sealed class CoinPickup : MonoBehaviour
 
     private void Collect()
     {
-        PlayerWallet.GetOrCreate().AddCoins(value);
+        PlayerStats stats = PlayerStats.Instance;
+        int collectedValue = value;
+        if (stats != null
+            && stats.DoubleMaterialChance > 0
+            && Random.value < Mathf.Clamp01(stats.DoubleMaterialChance / 100f))
+        {
+            collectedValue *= 2;
+        }
+
+        PlayerWallet.GetOrCreate().AddCoins(collectedValue);
+
+        if (stats != null
+            && stats.MaterialsHealing > 0
+            && Random.value < Mathf.Clamp01(stats.MaterialsHealing / 100f))
+        {
+            PlayerHealth health = stats.GetComponent<PlayerHealth>();
+            if (health != null)
+            {
+                health.Heal(1);
+            }
+        }
+
         Destroy(gameObject);
+    }
+
+    private float GetEffectiveMagnetRadius()
+    {
+        int pickupRange = PlayerStats.Instance != null ? PlayerStats.Instance.PickupRange : 0;
+        return magnetRadius * Mathf.Max(0f, 1f + pickupRange / 100f);
     }
 }

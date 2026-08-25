@@ -1046,6 +1046,8 @@ MonoBehaviour:
   placeholderColor: {r: 0.92, g: 0.92, b: 0.92, a: 1}
   maxWeapons: 6
   fallbackWeaponIcon: {fileID: 0}
+  addStartingWeapon: 1
+  startingWeaponId: weapon.stick.tier_1
 --- !u!1 &1426924324573982075
 GameObject:
   m_ObjectHideFlags: 0
@@ -2111,7 +2113,7 @@ GameObject:
   - component: {fileID: 3987044853675396041}
   - component: {fileID: 9198008550204046909}
   m_Layer: 5
-  m_Name: Text (TMP)
+  m_Name: RefreshText
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

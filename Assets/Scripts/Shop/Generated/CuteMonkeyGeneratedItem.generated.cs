@@ -5,6 +5,7 @@ public sealed class CuteMonkeyGeneratedItem : ShopItemDefinition
     private static readonly ItemStatModifier[] modifiers =
     {
         new ItemStatModifier("Ranged Damage", -1f, false),
+        new ItemStatModifier("Materials Healing", 8f, true),
     };
 
     public override string Id => "item.cute_monkey";

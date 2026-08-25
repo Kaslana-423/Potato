@@ -4,6 +4,7 @@ public sealed class DangerousBunnyGeneratedItem : ShopItemDefinition
 {
     private static readonly ItemStatModifier[] modifiers =
     {
+        new ItemStatModifier("Free Rerolls", 1f, false),
     };
 
     public override string Id => "item.dangerous_bunny";

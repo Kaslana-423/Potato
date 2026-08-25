@@ -4,6 +4,7 @@ public sealed class LemonadeGeneratedItem : ShopItemDefinition
 {
     private static readonly ItemStatModifier[] modifiers =
     {
+        new ItemStatModifier("Consumable Heal", 1f, false),
     };
 
     public override string Id => "item.lemonade";

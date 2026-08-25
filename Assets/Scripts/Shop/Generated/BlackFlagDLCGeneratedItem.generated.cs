@@ -5,6 +5,7 @@ public sealed class BlackFlagDLCGeneratedItem : ShopItemDefinition
     private static readonly ItemStatModifier[] modifiers =
     {
         new ItemStatModifier("Curse", 5f, false),
+        new ItemStatModifier("Enemies", 10f, true),
     };
 
     public override string Id => "item.black_flag_dlc";

@@ -6,6 +6,7 @@ public sealed class AlienWormGeneratedItem : ShopItemDefinition
     {
         new ItemStatModifier("Max HP", 3f, false),
         new ItemStatModifier("HP Regeneration", 2f, false),
+        new ItemStatModifier("Consumable Heal", -1f, false),
     };
 
     public override string Id => "item.alien_worm";

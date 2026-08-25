@@ -6,6 +6,7 @@ public sealed class ExplosiveShellsGeneratedItem : ShopItemDefinition
     {
         new ItemStatModifier("Damage", -15f, true),
         new ItemStatModifier("Explosion Damage", 60f, true),
+        new ItemStatModifier("Explosion Size", 15f, true),
     };
 
     public override string Id => "item.explosive_shells";

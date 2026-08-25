@@ -19,9 +19,12 @@ public sealed class EnemyShopFlow
         bool refreshShopWhenOpened)
     {
         AutoBind(ref shopManager, shopRoot, ref shopExitButton);
+        bool hadOffersBeforeOpening = shopManager != null && shopManager.CurrentOffers.Count > 0;
         SetVisible(ref shopManager, shopRoot, ref shopExitButton, true);
 
-        if (refreshShopWhenOpened && shopManager != null)
+        if (refreshShopWhenOpened
+            && shopManager != null
+            && (hadOffersBeforeOpening || shopManager.CurrentOffers.Count == 0))
         {
             shopManager.RefreshShop();
         }

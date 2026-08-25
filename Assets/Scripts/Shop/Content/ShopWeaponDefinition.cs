@@ -1,3 +1,4 @@
+using System;
 using System.Globalization;
 
 public enum WeaponAttackStyle
@@ -20,7 +21,19 @@ public abstract class ShopWeaponDefinition : ShopContentDefinition
     public virtual string SpecialEffects => string.Empty;
     public virtual string RuntimePrefabResourcePath => string.Empty;
 
+    public string FamilyId => GetFamilyId(Id);
     public string LocalizedClassTags => ShopLocalization.GetWeaponClasses(ClassTags);
+
+    public static string GetFamilyId(string weaponId)
+    {
+        if (string.IsNullOrWhiteSpace(weaponId))
+        {
+            return string.Empty;
+        }
+
+        int tierMarkerIndex = weaponId.LastIndexOf(".tier_", StringComparison.OrdinalIgnoreCase);
+        return tierMarkerIndex > 0 ? weaponId.Substring(0, tierMarkerIndex) : weaponId;
+    }
 
     public override string BuildStatLine()
     {

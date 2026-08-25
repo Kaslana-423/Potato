@@ -20,7 +20,29 @@ public enum PlayerStatId
     Dodge,
     Speed,
     Luck,
-    Harvesting
+    Harvesting,
+    ConsumableHeal,
+    MaterialsHealing,
+    XpGain,
+    PickupRange,
+    ItemsPrice,
+    ExplosionDamage,
+    ExplosionSize,
+    Bounces,
+    Piercing,
+    PiercingDamage,
+    DamageAgainstBosses,
+    StructureAttackSpeed,
+    StructureRange,
+    BurningSpeed,
+    BurningSpread,
+    Knockback,
+    DoubleMaterialChance,
+    FreeRerolls,
+    Trees,
+    Enemies,
+    EnemySpeed,
+    RerollPrice
 }
 
 public sealed class PlayerStats : MonoBehaviour
@@ -48,6 +70,30 @@ public sealed class PlayerStats : MonoBehaviour
     [SerializeField] private int luck = 22;
     [SerializeField] private int harvesting = 18;
 
+    [Header("次要属性")]
+    [SerializeField] private int consumableHeal;
+    [SerializeField] private int materialsHealing;
+    [SerializeField] private int xpGain;
+    [SerializeField] private int pickupRange;
+    [SerializeField] private int itemsPrice;
+    [SerializeField] private int explosionDamage;
+    [SerializeField] private int explosionSize;
+    [SerializeField] private int bounces;
+    [SerializeField] private int piercing;
+    [SerializeField] private int piercingDamage;
+    [SerializeField] private int damageAgainstBosses;
+    [SerializeField] private int structureAttackSpeed;
+    [SerializeField] private int structureRange;
+    [SerializeField] private int burningSpeed;
+    [SerializeField] private int burningSpread;
+    [SerializeField] private int knockback;
+    [SerializeField] private int doubleMaterialChance;
+    [SerializeField] private int freeRerolls;
+    [SerializeField] private int trees;
+    [SerializeField] private int enemies;
+    [SerializeField] private int enemySpeed;
+    [SerializeField] private int rerollPrice;
+
     public int Level => level;
     public int MaxHp => maxHp;
     public int HpRegeneration => hpRegeneration;
@@ -65,6 +111,28 @@ public sealed class PlayerStats : MonoBehaviour
     public int Speed => speed;
     public int Luck => luck;
     public int Harvesting => harvesting;
+    public int ConsumableHeal => consumableHeal;
+    public int MaterialsHealing => materialsHealing;
+    public int XpGain => xpGain;
+    public int PickupRange => pickupRange;
+    public int ItemsPrice => itemsPrice;
+    public int ExplosionDamage => explosionDamage;
+    public int ExplosionSize => explosionSize;
+    public int Bounces => bounces;
+    public int Piercing => piercing;
+    public int PiercingDamage => piercingDamage;
+    public int DamageAgainstBosses => damageAgainstBosses;
+    public int StructureAttackSpeed => structureAttackSpeed;
+    public int StructureRange => structureRange;
+    public int BurningSpeed => burningSpeed;
+    public int BurningSpread => burningSpread;
+    public int Knockback => knockback;
+    public int DoubleMaterialChance => doubleMaterialChance;
+    public int FreeRerolls => freeRerolls;
+    public int Trees => trees;
+    public int Enemies => enemies;
+    public int EnemySpeed => enemySpeed;
+    public int RerollPrice => rerollPrice;
 
     private void Awake()
     {
@@ -156,6 +224,50 @@ public sealed class PlayerStats : MonoBehaviour
                 return luck;
             case PlayerStatId.Harvesting:
                 return harvesting;
+            case PlayerStatId.ConsumableHeal:
+                return consumableHeal;
+            case PlayerStatId.MaterialsHealing:
+                return materialsHealing;
+            case PlayerStatId.XpGain:
+                return xpGain;
+            case PlayerStatId.PickupRange:
+                return pickupRange;
+            case PlayerStatId.ItemsPrice:
+                return itemsPrice;
+            case PlayerStatId.ExplosionDamage:
+                return explosionDamage;
+            case PlayerStatId.ExplosionSize:
+                return explosionSize;
+            case PlayerStatId.Bounces:
+                return bounces;
+            case PlayerStatId.Piercing:
+                return piercing;
+            case PlayerStatId.PiercingDamage:
+                return piercingDamage;
+            case PlayerStatId.DamageAgainstBosses:
+                return damageAgainstBosses;
+            case PlayerStatId.StructureAttackSpeed:
+                return structureAttackSpeed;
+            case PlayerStatId.StructureRange:
+                return structureRange;
+            case PlayerStatId.BurningSpeed:
+                return burningSpeed;
+            case PlayerStatId.BurningSpread:
+                return burningSpread;
+            case PlayerStatId.Knockback:
+                return knockback;
+            case PlayerStatId.DoubleMaterialChance:
+                return doubleMaterialChance;
+            case PlayerStatId.FreeRerolls:
+                return freeRerolls;
+            case PlayerStatId.Trees:
+                return trees;
+            case PlayerStatId.Enemies:
+                return enemies;
+            case PlayerStatId.EnemySpeed:
+                return enemySpeed;
+            case PlayerStatId.RerollPrice:
+                return rerollPrice;
             default:
                 return 0;
         }
@@ -228,6 +340,72 @@ public sealed class PlayerStats : MonoBehaviour
                 break;
             case PlayerStatId.Harvesting:
                 harvesting = value;
+                break;
+            case PlayerStatId.ConsumableHeal:
+                consumableHeal = value;
+                break;
+            case PlayerStatId.MaterialsHealing:
+                materialsHealing = value;
+                break;
+            case PlayerStatId.XpGain:
+                xpGain = value;
+                break;
+            case PlayerStatId.PickupRange:
+                pickupRange = value;
+                break;
+            case PlayerStatId.ItemsPrice:
+                itemsPrice = value;
+                break;
+            case PlayerStatId.ExplosionDamage:
+                explosionDamage = value;
+                break;
+            case PlayerStatId.ExplosionSize:
+                explosionSize = value;
+                break;
+            case PlayerStatId.Bounces:
+                bounces = value;
+                break;
+            case PlayerStatId.Piercing:
+                piercing = value;
+                break;
+            case PlayerStatId.PiercingDamage:
+                piercingDamage = value;
+                break;
+            case PlayerStatId.DamageAgainstBosses:
+                damageAgainstBosses = value;
+                break;
+            case PlayerStatId.StructureAttackSpeed:
+                structureAttackSpeed = value;
+                break;
+            case PlayerStatId.StructureRange:
+                structureRange = value;
+                break;
+            case PlayerStatId.BurningSpeed:
+                burningSpeed = value;
+                break;
+            case PlayerStatId.BurningSpread:
+                burningSpread = value;
+                break;
+            case PlayerStatId.Knockback:
+                knockback = value;
+                break;
+            case PlayerStatId.DoubleMaterialChance:
+                doubleMaterialChance = value;
+                break;
+            case PlayerStatId.FreeRerolls:
+                freeRerolls = value;
+                break;
+            case PlayerStatId.Trees:
+                trees = value;
+                break;
+            case PlayerStatId.Enemies:
+                enemies = value;
+                break;
+            case PlayerStatId.EnemySpeed:
+                enemySpeed = value;
+                break;
+            case PlayerStatId.RerollPrice:
+                rerollPrice = value;
                 break;
         }
 
@@ -321,6 +499,36 @@ public sealed class PlayerStats : MonoBehaviour
         };
     }
 
+    public IReadOnlyList<PlayerStatDisplayEntry> BuildSecondaryDisplayEntries()
+    {
+        Color secondaryColor = new Color(0.92f, 0.86f, 0.62f, 1f);
+        return new List<PlayerStatDisplayEntry>
+        {
+            MakeEntry(PlayerStatId.ConsumableHeal, "消耗品治疗", "疗", consumableHeal, secondaryColor),
+            MakeEntry(PlayerStatId.MaterialsHealing, "材料治疗概率", "材", materialsHealing, secondaryColor),
+            MakeEntry(PlayerStatId.XpGain, "经验获取", "经", xpGain, secondaryColor),
+            MakeEntry(PlayerStatId.PickupRange, "拾取范围", "拾", pickupRange, secondaryColor),
+            MakeEntry(PlayerStatId.ItemsPrice, "物品价格", "价", itemsPrice, secondaryColor),
+            MakeEntry(PlayerStatId.ExplosionDamage, "爆炸伤害", "爆", explosionDamage, secondaryColor),
+            MakeEntry(PlayerStatId.ExplosionSize, "爆炸范围", "域", explosionSize, secondaryColor),
+            MakeEntry(PlayerStatId.Bounces, "弹射次数", "弹", bounces, secondaryColor),
+            MakeEntry(PlayerStatId.Piercing, "贯穿次数", "贯", piercing, secondaryColor),
+            MakeEntry(PlayerStatId.PiercingDamage, "贯穿伤害", "穿", piercingDamage, secondaryColor),
+            MakeEntry(PlayerStatId.DamageAgainstBosses, "首领伤害", "首", damageAgainstBosses, secondaryColor),
+            MakeEntry(PlayerStatId.StructureAttackSpeed, "建筑攻击速度", "建", structureAttackSpeed, secondaryColor),
+            MakeEntry(PlayerStatId.StructureRange, "建筑范围", "筑", structureRange, secondaryColor),
+            MakeEntry(PlayerStatId.BurningSpeed, "燃烧速度", "燃", burningSpeed, secondaryColor),
+            MakeEntry(PlayerStatId.BurningSpread, "燃烧扩散", "烧", burningSpread, secondaryColor),
+            MakeEntry(PlayerStatId.Knockback, "击退", "击", knockback, secondaryColor),
+            MakeEntry(PlayerStatId.DoubleMaterialChance, "双倍材料概率", "双", doubleMaterialChance, secondaryColor),
+            MakeEntry(PlayerStatId.FreeRerolls, "免费刷新", "免", freeRerolls, secondaryColor),
+            MakeEntry(PlayerStatId.Trees, "树木数量", "树", trees, secondaryColor),
+            MakeEntry(PlayerStatId.Enemies, "敌人数量", "敌", enemies, secondaryColor),
+            MakeEntry(PlayerStatId.EnemySpeed, "敌人速度", "怪", enemySpeed, secondaryColor),
+            MakeEntry(PlayerStatId.RerollPrice, "刷新价格", "刷", rerollPrice, secondaryColor),
+        };
+    }
+
     public void NotifyStatsChanged()
     {
         StatsChanged?.Invoke(this);
@@ -394,6 +602,85 @@ public sealed class PlayerStats : MonoBehaviour
             case "harvesting":
             case "harvest":
                 parsedId = PlayerStatId.Harvesting;
+                return true;
+            case "consumableheal":
+            case "consumablehealing":
+                parsedId = PlayerStatId.ConsumableHeal;
+                return true;
+            case "materialshealing":
+            case "materialhealing":
+                parsedId = PlayerStatId.MaterialsHealing;
+                return true;
+            case "xpgain":
+            case "experiencegain":
+                parsedId = PlayerStatId.XpGain;
+                return true;
+            case "pickuprange":
+                parsedId = PlayerStatId.PickupRange;
+                return true;
+            case "itemsprice":
+            case "itemprice":
+            case "shopprice":
+                parsedId = PlayerStatId.ItemsPrice;
+                return true;
+            case "explosiondamage":
+                parsedId = PlayerStatId.ExplosionDamage;
+                return true;
+            case "explosionsize":
+            case "explosionrange":
+                parsedId = PlayerStatId.ExplosionSize;
+                return true;
+            case "bounces":
+            case "bounce":
+                parsedId = PlayerStatId.Bounces;
+                return true;
+            case "piercing":
+            case "pierce":
+                parsedId = PlayerStatId.Piercing;
+                return true;
+            case "piercingdamage":
+                parsedId = PlayerStatId.PiercingDamage;
+                return true;
+            case "damageagainstbosses":
+            case "bossdamage":
+                parsedId = PlayerStatId.DamageAgainstBosses;
+                return true;
+            case "structureattackspeed":
+                parsedId = PlayerStatId.StructureAttackSpeed;
+                return true;
+            case "structurerange":
+                parsedId = PlayerStatId.StructureRange;
+                return true;
+            case "burningspeed":
+                parsedId = PlayerStatId.BurningSpeed;
+                return true;
+            case "burningspread":
+                parsedId = PlayerStatId.BurningSpread;
+                return true;
+            case "knockback":
+                parsedId = PlayerStatId.Knockback;
+                return true;
+            case "doublematerialchance":
+            case "doublematerialschance":
+                parsedId = PlayerStatId.DoubleMaterialChance;
+                return true;
+            case "freererolls":
+            case "freereroll":
+                parsedId = PlayerStatId.FreeRerolls;
+                return true;
+            case "trees":
+            case "tree":
+                parsedId = PlayerStatId.Trees;
+                return true;
+            case "enemies":
+            case "enemycount":
+                parsedId = PlayerStatId.Enemies;
+                return true;
+            case "enemyspeed":
+                parsedId = PlayerStatId.EnemySpeed;
+                return true;
+            case "rerollprice":
+                parsedId = PlayerStatId.RerollPrice;
                 return true;
             default:
                 return false;
@@ -480,6 +767,50 @@ public sealed class PlayerStats : MonoBehaviour
                 return "luck";
             case PlayerStatId.Harvesting:
                 return "harvesting";
+            case PlayerStatId.ConsumableHeal:
+                return "consumable_heal";
+            case PlayerStatId.MaterialsHealing:
+                return "materials_healing";
+            case PlayerStatId.XpGain:
+                return "xp_gain";
+            case PlayerStatId.PickupRange:
+                return "pickup_range";
+            case PlayerStatId.ItemsPrice:
+                return "items_price";
+            case PlayerStatId.ExplosionDamage:
+                return "explosion_damage";
+            case PlayerStatId.ExplosionSize:
+                return "explosion_size";
+            case PlayerStatId.Bounces:
+                return "bounces";
+            case PlayerStatId.Piercing:
+                return "piercing";
+            case PlayerStatId.PiercingDamage:
+                return "piercing_damage";
+            case PlayerStatId.DamageAgainstBosses:
+                return "damage_against_bosses";
+            case PlayerStatId.StructureAttackSpeed:
+                return "structure_attack_speed";
+            case PlayerStatId.StructureRange:
+                return "structure_range";
+            case PlayerStatId.BurningSpeed:
+                return "burning_speed";
+            case PlayerStatId.BurningSpread:
+                return "burning_spread";
+            case PlayerStatId.Knockback:
+                return "knockback";
+            case PlayerStatId.DoubleMaterialChance:
+                return "double_material_chance";
+            case PlayerStatId.FreeRerolls:
+                return "free_rerolls";
+            case PlayerStatId.Trees:
+                return "trees";
+            case PlayerStatId.Enemies:
+                return "enemies";
+            case PlayerStatId.EnemySpeed:
+                return "enemy_speed";
+            case PlayerStatId.RerollPrice:
+                return "reroll_price";
             default:
                 return id.ToString();
         }

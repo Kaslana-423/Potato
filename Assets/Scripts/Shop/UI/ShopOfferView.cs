@@ -18,16 +18,23 @@ public sealed class ShopOfferView : MonoBehaviour
     [SerializeField] private TMP_Text priceText;
     [SerializeField] private Button inspectButton;
     [SerializeField] private Button buyButton;
+    [SerializeField] private Button lockButton;
+    [SerializeField] private TMP_Text lockText;
 
     private ShopContentDefinition content;
     private Action<ShopContentDefinition> inspectAction;
     private Action<ShopOfferView, ShopContentDefinition> buyAction;
+    private Action<ShopOfferView, bool> lockAction;
+
+    public bool IsLocked { get; private set; }
 
     private void Awake()
     {
         AutoBindReferences();
+        EnsureLockButton();
         BindInspectButton();
         BindBuyButton();
+        BindLockButton();
     }
 
     private void Reset()
@@ -113,6 +120,65 @@ public sealed class ShopOfferView : MonoBehaviour
         {
             buyButton = FindComponent<Button>("PricePanel", "BuyButton", "PriceButton");
         }
+
+        if (lockButton == null)
+        {
+            lockButton = FindComponent<Button>("LockButton", "Lock Button");
+        }
+
+        if (lockText == null && lockButton != null)
+        {
+            lockText = lockButton.GetComponentInChildren<TMP_Text>(true);
+        }
+    }
+
+    public void EnsureLockButton()
+    {
+        AutoBindReferences();
+        if (lockButton != null)
+        {
+            return;
+        }
+
+        GameObject buttonObject = new GameObject("LockButton", typeof(RectTransform), typeof(Image), typeof(Button));
+        buttonObject.layer = gameObject.layer;
+        buttonObject.transform.SetParent(transform, false);
+
+        RectTransform buttonRect = buttonObject.GetComponent<RectTransform>();
+        buttonRect.anchorMin = Vector2.one;
+        buttonRect.anchorMax = Vector2.one;
+        buttonRect.pivot = Vector2.one;
+        buttonRect.anchoredPosition = new Vector2(-12f, -12f);
+        buttonRect.sizeDelta = new Vector2(84f, 38f);
+
+        Image buttonImage = buttonObject.GetComponent<Image>();
+        buttonImage.color = new Color(0.16f, 0.16f, 0.16f, 0.96f);
+
+        lockButton = buttonObject.GetComponent<Button>();
+        lockButton.targetGraphic = buttonImage;
+
+        GameObject textObject = new GameObject("LockText", typeof(RectTransform), typeof(TextMeshProUGUI));
+        textObject.layer = gameObject.layer;
+        textObject.transform.SetParent(buttonObject.transform, false);
+
+        RectTransform textRect = textObject.GetComponent<RectTransform>();
+        textRect.anchorMin = Vector2.zero;
+        textRect.anchorMax = Vector2.one;
+        textRect.offsetMin = Vector2.zero;
+        textRect.offsetMax = Vector2.zero;
+
+        lockText = textObject.GetComponent<TextMeshProUGUI>();
+        lockText.text = "锁定";
+        lockText.fontSize = 18f;
+        lockText.alignment = TextAlignmentOptions.Center;
+        lockText.color = Color.white;
+        if (nameText != null)
+        {
+            lockText.font = nameText.font;
+        }
+
+        BindLockButton();
+        UpdateLockVisual();
     }
 
     public void Configure(
@@ -167,14 +233,29 @@ public sealed class ShopOfferView : MonoBehaviour
         }
     }
 
+    private void BindLockButton()
+    {
+        if (lockButton != null)
+        {
+            lockButton.onClick.RemoveListener(ToggleLock);
+            lockButton.onClick.AddListener(ToggleLock);
+        }
+    }
+
     public void Bind(
         ShopContentDefinition newContent,
         Action<ShopContentDefinition> newInspectAction,
-        Action<ShopOfferView, ShopContentDefinition> newBuyAction = null)
+        Action<ShopOfferView, ShopContentDefinition> newBuyAction = null,
+        int purchaseCount = 0,
+        Action<ShopOfferView, bool> newLockAction = null,
+        bool initiallyLocked = false,
+        int displayedPrice = -1)
     {
         content = newContent;
         inspectAction = newInspectAction;
         buyAction = newBuyAction;
+        lockAction = newLockAction;
+        SetLocked(initiallyLocked, false);
 
         if (content == null)
         {
@@ -233,12 +314,17 @@ public sealed class ShopOfferView : MonoBehaviour
             statsText.text = content.BuildStatLine();
         }
 
+        SetPrice(displayedPrice >= 0 ? displayedPrice : content.BasePrice);
+
+        BindLimit(content, purchaseCount);
+    }
+
+    public void SetPrice(int price)
+    {
         if (priceText != null)
         {
-            priceText.text = $"<color=#90E65A>{content.BasePrice}</color> 材料";
+            priceText.text = $"<color=#90E65A>{Mathf.Max(0, price)}</color> 材料";
         }
-
-        BindLimit(content);
     }
 
     public void SetVisible(bool visible)
@@ -251,6 +337,8 @@ public sealed class ShopOfferView : MonoBehaviour
         content = null;
         inspectAction = null;
         buyAction = null;
+        lockAction = null;
+        SetLocked(false, false);
 
         SetCardContentVisible(false);
         if (background != null)
@@ -279,6 +367,44 @@ public sealed class ShopOfferView : MonoBehaviour
         buyAction?.Invoke(this, content);
     }
 
+    private void ToggleLock()
+    {
+        if (content == null)
+        {
+            return;
+        }
+
+        SetLocked(!IsLocked, true);
+    }
+
+    public void SetLocked(bool locked, bool notify)
+    {
+        IsLocked = locked && content != null;
+        UpdateLockVisual();
+        if (notify)
+        {
+            lockAction?.Invoke(this, IsLocked);
+        }
+    }
+
+    private void UpdateLockVisual()
+    {
+        if (lockText != null)
+        {
+            lockText.text = IsLocked ? "已锁" : "锁定";
+            lockText.color = IsLocked
+                ? new Color(1f, 0.86f, 0.32f, 1f)
+                : Color.white;
+        }
+
+        if (lockButton != null && lockButton.targetGraphic != null)
+        {
+            lockButton.targetGraphic.color = IsLocked
+                ? new Color(0.35f, 0.23f, 0.05f, 0.98f)
+                : new Color(0.16f, 0.16f, 0.16f, 0.96f);
+        }
+    }
+
     private void SetCardContentVisible(bool visible)
     {
         if (IconPanel != null)
@@ -298,6 +424,11 @@ public sealed class ShopOfferView : MonoBehaviour
         {
             buyButton.gameObject.SetActive(visible);
         }
+
+        if (lockButton != null)
+        {
+            lockButton.gameObject.SetActive(visible);
+        }
     }
 
     private static void SetGameObjectActive(Component component, bool active)
@@ -308,7 +439,7 @@ public sealed class ShopOfferView : MonoBehaviour
         }
     }
 
-    private void BindLimit(ShopContentDefinition newContent)
+    private void BindLimit(ShopContentDefinition newContent, int purchaseCount)
     {
         if (limitText == null)
         {
@@ -320,7 +451,7 @@ public sealed class ShopOfferView : MonoBehaviour
         limitText.gameObject.SetActive(hasLimit);
         if (hasLimit)
         {
-            limitText.text = $"限制 (0/{item.PurchaseLimit})";
+            limitText.text = $"限制 ({Mathf.Clamp(purchaseCount, 0, item.PurchaseLimit)}/{item.PurchaseLimit})";
         }
     }
 

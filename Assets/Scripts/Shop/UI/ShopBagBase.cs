@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -21,6 +22,8 @@ public abstract class ShopBagBase : MonoBehaviour
 
     public IReadOnlyList<ShopContentDefinition> Contents => contents;
     public int Count => contents.Count;
+    protected List<ShopContentDefinition> MutableContents => contents;
+    public event Action ContentsChanged;
 
     protected virtual string MissingBagMessage => "背包未设置。";
 
@@ -79,8 +82,8 @@ public abstract class ShopBagBase : MonoBehaviour
             return false;
         }
 
-        contents.Add(content);
-        CreateSlot(content);
+        StoreContent(content);
+        ContentsChanged?.Invoke();
         return true;
     }
 
@@ -108,6 +111,18 @@ public abstract class ShopBagBase : MonoBehaviour
     public void Clear()
     {
         contents.Clear();
+        RebuildSlotViews();
+        ContentsChanged?.Invoke();
+    }
+
+    protected virtual void StoreContent(ShopContentDefinition content)
+    {
+        contents.Add(content);
+        CreateSlot(content);
+    }
+
+    protected void RebuildSlotViews()
+    {
         AutoBindReferences();
         if (contentRoot == null)
         {
@@ -117,6 +132,7 @@ public abstract class ShopBagBase : MonoBehaviour
         for (int index = contentRoot.childCount - 1; index >= 0; index--)
         {
             Transform child = contentRoot.GetChild(index);
+            child.gameObject.SetActive(false);
             if (Application.isPlaying)
             {
                 Destroy(child.gameObject);
@@ -125,6 +141,11 @@ public abstract class ShopBagBase : MonoBehaviour
             {
                 DestroyImmediate(child.gameObject);
             }
+        }
+
+        foreach (ShopContentDefinition content in contents)
+        {
+            CreateSlot(content);
         }
     }
 

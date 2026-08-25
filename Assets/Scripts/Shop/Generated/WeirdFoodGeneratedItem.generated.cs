@@ -5,6 +5,7 @@ public sealed class WeirdFoodGeneratedItem : ShopItemDefinition
     private static readonly ItemStatModifier[] modifiers =
     {
         new ItemStatModifier("Dodge", -2f, true),
+        new ItemStatModifier("Consumable Heal", 2f, false),
     };
 
     public override string Id => "item.weird_food";

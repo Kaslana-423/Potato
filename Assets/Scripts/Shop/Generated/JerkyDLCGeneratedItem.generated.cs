@@ -4,6 +4,7 @@ public sealed class JerkyDLCGeneratedItem : ShopItemDefinition
 {
     private static readonly ItemStatModifier[] modifiers =
     {
+        new ItemStatModifier("Consumable Heal", 3f, false),
     };
 
     public override string Id => "item.jerky_dlc";

@@ -6,6 +6,7 @@ public sealed class FrozenHeartGeneratedItem : ShopItemDefinition
     {
         new ItemStatModifier("Elemental Damage", 8f, false),
         new ItemStatModifier("Crit Chance", 5f, true),
+        new ItemStatModifier("Burning Speed", -100f, true),
     };
 
     public override string Id => "item.frozen_heart";

@@ -12,17 +12,32 @@ public sealed class ProjectileDamageOnHit : MonoBehaviour
     private Action<GameObject> releaseAction;
     private bool released;
     private int version;
+    private float expiresAt;
 
     public int Version => version;
 
-    public int Configure(float newDamage, Action<GameObject> newReleaseAction)
+    public int Configure(float newDamage, float lifetime, Action<GameObject> newReleaseAction)
     {
         damage = Mathf.Max(0f, newDamage);
         releaseAction = newReleaseAction;
         released = false;
         hitEnemies.Clear();
+        expiresAt = Time.time + Mathf.Max(0.01f, lifetime);
         version++;
         return version;
+    }
+
+    private void Update()
+    {
+        if (!released && Time.time >= expiresAt)
+        {
+            Release();
+        }
+    }
+
+    private void OnDisable()
+    {
+        hitEnemies.Clear();
     }
 
     public void Expire(int expectedVersion)
@@ -73,6 +88,8 @@ public sealed class ProjectileDamageOnHit : MonoBehaviour
         }
 
         released = true;
+        Action<GameObject> callback = releaseAction;
+        releaseAction = null;
         Rigidbody2D rb = GetComponent<Rigidbody2D>();
         if (rb != null)
         {
@@ -80,9 +97,9 @@ public sealed class ProjectileDamageOnHit : MonoBehaviour
             rb.angularVelocity = 0f;
         }
 
-        if (releaseAction != null)
+        if (callback != null)
         {
-            releaseAction(gameObject);
+            callback(gameObject);
         }
         else
         {

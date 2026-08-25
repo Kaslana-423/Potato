@@ -4,6 +4,7 @@ public sealed class TreeGeneratedItem : ShopItemDefinition
 {
     private static readonly ItemStatModifier[] modifiers =
     {
+        new ItemStatModifier("Trees", 1f, false),
     };
 
     public override string Id => "item.tree";

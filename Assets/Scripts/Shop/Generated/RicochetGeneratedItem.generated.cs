@@ -5,6 +5,7 @@ public sealed class RicochetGeneratedItem : ShopItemDefinition
     private static readonly ItemStatModifier[] modifiers =
     {
         new ItemStatModifier("Damage", -25f, true),
+        new ItemStatModifier("Bounces", 1f, false),
     };
 
     public override string Id => "item.ricochet";
