@@ -16,6 +16,11 @@ public sealed class EnemySpawnPool : MonoBehaviour
     [SerializeField, Min(0)] private int defaultMaxCoinsDropped = 3;
     [SerializeField, Min(0f)] private float defaultCoinScatterRadius = 0.45f;
 
+    [Header("Consumable And Crate Drops")]
+    [SerializeField] private FruitPickup fruitPrefab;
+    [SerializeField] private LootCratePickup lootCratePrefab;
+    [SerializeField, Min(0f)] private float defaultLootScatterRadius = 0.45f;
+
     private readonly Dictionary<EnemyBase, ObjectPool<EnemyBase>> prefabPools = new Dictionary<EnemyBase, ObjectPool<EnemyBase>>();
     private readonly Dictionary<EnemyBase, ObjectPool<EnemyBase>> instancePools = new Dictionary<EnemyBase, ObjectPool<EnemyBase>>();
     private readonly HashSet<EnemyBase> activeEnemies = new HashSet<EnemyBase>();
@@ -223,6 +228,20 @@ public sealed class EnemySpawnPool : MonoBehaviour
             defaultMaxCoinsDropped,
             defaultCoinScatterRadius,
             addedCoinDropper);
+
+        EnemyLootDropper lootDropper = enemy.GetComponent<EnemyLootDropper>();
+        bool addedLootDropper = false;
+        if (lootDropper == null)
+        {
+            lootDropper = enemy.gameObject.AddComponent<EnemyLootDropper>();
+            addedLootDropper = true;
+        }
+
+        lootDropper.ConfigureDefaults(
+            fruitPrefab,
+            lootCratePrefab,
+            defaultLootScatterRadius,
+            addedLootDropper);
 
         enemy.gameObject.SetActive(false);
     }

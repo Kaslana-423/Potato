@@ -5,9 +5,16 @@ public sealed class SharpToothTier3GeneratedWeapon : ShopWeaponDefinition
     public override string Description => "+1 % Life Steal for every 25% / 20% / 15% / 10% of missing health";
     public override int BasePrice => 52;
     public override ShopRarity Rarity => ShopRarity.Tier3;
+    public override WeaponAttackStyle AttackStyle => WeaponAttackStyle.Thrust;
     public override float Damage => 11f;
+    public override string DamageScalingText => "+50% +80%";
+    public override string DamageScalingStats => "Melee Damage,Life Steal";
     public override float AttackCooldown => 1f;
     public override float AttackRange => 170f;
+    public override float CritMultiplier => 2.3f;
+    public override float CritChance => 9f;
+    public override float Knockback => 2f;
+    public override float LifeSteal => 0f;
     public override string ClassTags => "Primitive , Precise";
     public override string SpecialEffects => "+1 % Life Steal for every 25% / 20% / 15% / 10% of missing health";
 }

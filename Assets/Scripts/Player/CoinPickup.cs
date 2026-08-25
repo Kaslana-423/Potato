@@ -1,9 +1,10 @@
 using UnityEngine;
 
-public sealed class CoinPickup : MonoBehaviour
+public sealed class CoinPickup : BattlefieldDrop
 {
     [Header("Value")]
     [SerializeField, Min(1)] private int value = 1;
+    [SerializeField, Min(1)] private int retainedMaterialUnits = 1;
 
     [Header("Magnet")]
     [SerializeField, Min(0f)] private float magnetRadius = 3.5f;
@@ -16,6 +17,8 @@ public sealed class CoinPickup : MonoBehaviour
     private bool collecting;
 
     public int Value => value;
+    public int RetainedMaterialUnits => retainedMaterialUnits;
+    public bool HasRetainedBonus => value > retainedMaterialUnits;
 
     private void OnEnable()
     {
@@ -51,6 +54,12 @@ public sealed class CoinPickup : MonoBehaviour
     public void SetValue(int newValue)
     {
         value = Mathf.Max(1, newValue);
+    }
+
+    public void ConfigureMaterialValue(int collectedValue, int baseMaterialUnits)
+    {
+        value = Mathf.Max(1, collectedValue);
+        retainedMaterialUnits = Mathf.Max(1, baseMaterialUnits);
     }
 
     private Transform ResolveTarget()

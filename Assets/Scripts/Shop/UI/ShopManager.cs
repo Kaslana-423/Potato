@@ -63,6 +63,9 @@ public sealed class ShopRarityWeightProfile
 
 public sealed class ShopManager : MonoBehaviour
 {
+    private static readonly Color AffordableButtonColor = new Color(0.22f, 0.62f, 0.24f, 1f);
+    private static readonly Color UnaffordableButtonColor = new Color(0.28f, 0.28f, 0.28f, 0.82f);
+
     [Header("Window")]
     [SerializeField] private GameObject shopWindowRoot;
     [SerializeField] private CanvasGroup shopCanvasGroup;
@@ -115,6 +118,7 @@ public sealed class ShopManager : MonoBehaviour
     private readonly List<ShopContentDefinition> currentOffers = new List<ShopContentDefinition>();
     private readonly Dictionary<string, int> purchaseCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
     private Button boundRefreshButton;
+    private PlayerWallet affordabilityWallet;
     private int paidRefreshCount;
     private int freeRefreshesUsed;
 
@@ -146,6 +150,17 @@ public sealed class ShopManager : MonoBehaviour
     {
         EnsureRarityProfiles();
         AutoBindReferences();
+    }
+
+    private void OnEnable()
+    {
+        AutoBindReferences();
+        BindAffordabilityWallet();
+    }
+
+    private void OnDisable()
+    {
+        UnbindAffordabilityWallet();
     }
 
     private void OnValidate()
@@ -290,6 +305,7 @@ public sealed class ShopManager : MonoBehaviour
     public void OpenShop()
     {
         SetShopOpen(true);
+        OpenPendingLootCrates();
     }
 
     public void CloseShop()
@@ -315,7 +331,9 @@ public sealed class ShopManager : MonoBehaviour
 
             SetShopVisible(true);
             EnsureUi();
+            BindAffordabilityWallet();
             UpdateRefreshButtonLabel();
+            UpdateOfferPrices();
 
             if (refreshWhenOpenedIfEmpty && currentOffers.Count == 0)
             {
@@ -369,6 +387,63 @@ public sealed class ShopManager : MonoBehaviour
         SetStatus(usesFreeRefresh
             ? $"已使用免费刷新；锁定商品已保留。剩余免费刷新 {FreeRefreshesRemaining} 次。"
             : $"花费 {cost} 金币刷新商店；锁定商品已保留。下次刷新需要 {CurrentRefreshCost}。");
+    }
+
+    public void OpenPendingLootCrates()
+    {
+        PlayerLootCrateInventory inventory = PlayerLootCrateInventory.GetOrCreate();
+        if (inventory == null || inventory.PendingCrates <= 0)
+        {
+            return;
+        }
+
+        EnsureUi();
+        if (relicBag == null)
+        {
+            SetStatus("未找到道具背包，暂时无法开启战利品箱。界面修复后箱子仍会保留。");
+            return;
+        }
+
+        var grantedNames = new List<string>();
+        while (inventory.PendingCrates > 0)
+        {
+            var itemPool = ShopContentCatalog.All
+                .Where(content => content is ShopItemDefinition
+                    && !HasReachedPurchaseLimit(content))
+                .ToList();
+            if (itemPool.Count == 0)
+            {
+                break;
+            }
+
+            ShopContentDefinition reward = TakeWeightedRandomOffer(itemPool, BuildCurrentRarityWeights());
+            string failureReason = string.Empty;
+            if (reward == null
+                || !relicBag.CanAccept(reward, out failureReason)
+                || !relicBag.TryAdd(reward, out failureReason))
+            {
+                SetStatus(string.IsNullOrWhiteSpace(failureReason)
+                    ? "战利品箱奖励无法加入道具背包，未开启的箱子仍会保留。"
+                    : failureReason);
+                break;
+            }
+
+            if (!inventory.TryConsumeCrate())
+            {
+                break;
+            }
+
+            RegisterPurchase(reward);
+            ShopItemEffectApplier.Apply(reward as ShopItemDefinition, PlayerStats.Instance);
+            grantedNames.Add(reward.LocalizedDisplayName);
+        }
+
+        if (grantedNames.Count > 0)
+        {
+            UpdateOfferPrices();
+            UpdateRefreshButtonLabel();
+            SetStatus($"已开启 {grantedNames.Count} 个战利品箱：{string.Join("、", grantedNames)}");
+        }
     }
 
     private void GenerateOffersPreservingLocks()
@@ -429,7 +504,8 @@ public sealed class ShopManager : MonoBehaviour
                     GetPurchaseCount(offer.Id),
                     HandleOfferLockChanged,
                     lockedOffers.ContainsKey(index),
-                    GetOfferPrice(offer));
+                    GetOfferPrice(offer),
+                    CanAffordOffer(offer));
                 view.SetVisible(true);
             }
             else
@@ -541,24 +617,99 @@ public sealed class ShopManager : MonoBehaviour
 
     private void UpdateRefreshButtonLabel()
     {
+        int cost = CurrentRefreshCost;
+        PlayerWallet wallet = Application.isPlaying ? ResolvePlayerWallet() : playerWallet;
+        bool canAfford = !Application.isPlaying
+            || cost <= 0
+            || (wallet != null && wallet.CanSpend(cost));
+
         if (refreshCostText != null)
         {
-            refreshCostText.text = FreeRefreshesRemaining > 0
+            string displayedCost = FreeRefreshesRemaining > 0
                 ? $"0 ({FreeRefreshesRemaining})"
-                : CurrentRefreshCost.ToString();
+                : cost.ToString();
+            string costColor = canAfford ? "#73E66E" : "#FF6464";
+            refreshCostText.text = $"<color={costColor}>{displayedCost}</color>";
         }
+
+        if (refreshButton == null)
+        {
+            return;
+        }
+
+        refreshButton.interactable = canAfford;
+        if (refreshButton.targetGraphic != null)
+        {
+            refreshButton.targetGraphic.color = canAfford
+                ? AffordableButtonColor
+                : UnaffordableButtonColor;
+        }
+
+        ColorBlock colors = refreshButton.colors;
+        colors.normalColor = Color.white;
+        colors.highlightedColor = new Color(1.12f, 1.12f, 1.12f, 1f);
+        colors.pressedColor = new Color(0.82f, 0.82f, 0.82f, 1f);
+        colors.selectedColor = Color.white;
+        colors.disabledColor = Color.white;
+        refreshButton.colors = colors;
     }
 
     private void UpdateOfferPrices()
     {
+        PlayerWallet wallet = ResolvePlayerWallet();
         int visibleCount = Mathf.Min(currentOffers.Count, offerViews.Length);
         for (int index = 0; index < visibleCount; index++)
         {
             if (offerViews[index] != null && currentOffers[index] != null)
             {
-                offerViews[index].SetPrice(GetOfferPrice(currentOffers[index]));
+                int price = GetOfferPrice(currentOffers[index]);
+                offerViews[index].SetPurchaseState(
+                    price,
+                    wallet != null && wallet.CanSpend(price));
             }
         }
+    }
+
+    private bool CanAffordOffer(ShopContentDefinition content)
+    {
+        PlayerWallet wallet = ResolvePlayerWallet();
+        return wallet != null && wallet.CanSpend(GetOfferPrice(content));
+    }
+
+    private void BindAffordabilityWallet()
+    {
+        if (!Application.isPlaying)
+        {
+            return;
+        }
+
+        PlayerWallet wallet = ResolvePlayerWallet();
+        if (affordabilityWallet == wallet)
+        {
+            return;
+        }
+
+        UnbindAffordabilityWallet();
+        affordabilityWallet = wallet;
+        if (affordabilityWallet != null)
+        {
+            affordabilityWallet.CoinsChanged += HandleWalletCoinsChanged;
+        }
+    }
+
+    private void UnbindAffordabilityWallet()
+    {
+        if (affordabilityWallet != null)
+        {
+            affordabilityWallet.CoinsChanged -= HandleWalletCoinsChanged;
+            affordabilityWallet = null;
+        }
+    }
+
+    private void HandleWalletCoinsChanged(PlayerWallet wallet, int coins, int delta)
+    {
+        UpdateOfferPrices();
+        UpdateRefreshButtonLabel();
     }
 
     private void HandleOfferLockChanged(ShopOfferView view, bool locked)

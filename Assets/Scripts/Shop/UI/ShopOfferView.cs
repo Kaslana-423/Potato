@@ -5,6 +5,9 @@ using UnityEngine.UI;
 
 public sealed class ShopOfferView : MonoBehaviour
 {
+    private static readonly Color AffordableButtonColor = new Color(0.22f, 0.62f, 0.24f, 1f);
+    private static readonly Color UnaffordableButtonColor = new Color(0.28f, 0.28f, 0.28f, 0.82f);
+
     [Header("Card References")]
     [SerializeField] private GameObject IconPanel;
     [SerializeField] private Image background;
@@ -249,7 +252,8 @@ public sealed class ShopOfferView : MonoBehaviour
         int purchaseCount = 0,
         Action<ShopOfferView, bool> newLockAction = null,
         bool initiallyLocked = false,
-        int displayedPrice = -1)
+        int displayedPrice = -1,
+        bool canAfford = true)
     {
         content = newContent;
         inspectAction = newInspectAction;
@@ -314,17 +318,44 @@ public sealed class ShopOfferView : MonoBehaviour
             statsText.text = content.BuildStatLine();
         }
 
-        SetPrice(displayedPrice >= 0 ? displayedPrice : content.BasePrice);
+        SetPurchaseState(displayedPrice >= 0 ? displayedPrice : content.BasePrice, canAfford);
 
         BindLimit(content, purchaseCount);
     }
 
     public void SetPrice(int price)
     {
+        SetPurchaseState(price, true);
+    }
+
+    public void SetPurchaseState(int price, bool canAfford)
+    {
         if (priceText != null)
         {
-            priceText.text = $"<color=#90E65A>{Mathf.Max(0, price)}</color> 材料";
+            string priceColor = canAfford ? "#73E66E" : "#FF6464";
+            priceText.text = $"<color={priceColor}>{Mathf.Max(0, price)}</color> 材料";
         }
+
+        if (buyButton == null)
+        {
+            return;
+        }
+
+        buyButton.interactable = content != null && canAfford;
+        if (buyButton.targetGraphic != null)
+        {
+            buyButton.targetGraphic.color = canAfford
+                ? AffordableButtonColor
+                : UnaffordableButtonColor;
+        }
+
+        ColorBlock colors = buyButton.colors;
+        colors.normalColor = Color.white;
+        colors.highlightedColor = new Color(1.12f, 1.12f, 1.12f, 1f);
+        colors.pressedColor = new Color(0.82f, 0.82f, 0.82f, 1f);
+        colors.selectedColor = Color.white;
+        colors.disabledColor = Color.white;
+        buyButton.colors = colors;
     }
 
     public void SetVisible(bool visible)

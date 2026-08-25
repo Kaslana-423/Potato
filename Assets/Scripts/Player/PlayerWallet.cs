@@ -6,13 +6,16 @@ public sealed class PlayerWallet : MonoBehaviour
     public static PlayerWallet Instance { get; private set; }
 
     public event Action<PlayerWallet, int, int> CoinsChanged;
+    public event Action<PlayerWallet, int, int> RetainedMaterialsChanged;
 
     [Header("Currency")]
     [SerializeField, Min(0)] private int startingCoins = 0;
     [SerializeField, Min(0)] private int coins = 0;
+    [SerializeField, Min(0)] private int retainedMaterials = 0;
     [SerializeField] private bool resetToStartingCoinsOnAwake = true;
 
     public int Coins => coins;
+    public int RetainedMaterials => retainedMaterials;
 
     private void Awake()
     {
@@ -27,12 +30,14 @@ public sealed class PlayerWallet : MonoBehaviour
         if (resetToStartingCoinsOnAwake)
         {
             coins = Mathf.Max(0, startingCoins);
+            retainedMaterials = 0;
         }
     }
 
     private void Start()
     {
         NotifyCoinsChanged(0);
+        NotifyRetainedMaterialsChanged(0);
     }
 
     private void OnDestroy()
@@ -47,6 +52,7 @@ public sealed class PlayerWallet : MonoBehaviour
     {
         startingCoins = Mathf.Max(0, startingCoins);
         coins = Mathf.Max(0, coins);
+        retainedMaterials = Mathf.Max(0, retainedMaterials);
     }
 
     public static PlayerWallet GetOrCreate()
@@ -121,8 +127,48 @@ public sealed class PlayerWallet : MonoBehaviour
         return true;
     }
 
+    public void AddRetainedMaterials(int amount)
+    {
+        if (amount <= 0)
+        {
+            return;
+        }
+
+        SetRetainedMaterials(retainedMaterials + amount);
+    }
+
+    public int ConsumeRetainedMaterialBonus(int materialUnits)
+    {
+        int consumed = Mathf.Min(Mathf.Max(0, materialUnits), retainedMaterials);
+        if (consumed <= 0)
+        {
+            return 0;
+        }
+
+        SetRetainedMaterials(retainedMaterials - consumed);
+        return consumed;
+    }
+
+    public void SetRetainedMaterials(int amount)
+    {
+        int clampedAmount = Mathf.Max(0, amount);
+        if (retainedMaterials == clampedAmount)
+        {
+            return;
+        }
+
+        int oldAmount = retainedMaterials;
+        retainedMaterials = clampedAmount;
+        NotifyRetainedMaterialsChanged(retainedMaterials - oldAmount);
+    }
+
     public void NotifyCoinsChanged(int delta = 0)
     {
         CoinsChanged?.Invoke(this, coins, delta);
+    }
+
+    public void NotifyRetainedMaterialsChanged(int delta = 0)
+    {
+        RetainedMaterialsChanged?.Invoke(this, retainedMaterials, delta);
     }
 }

@@ -120,7 +120,7 @@ public class RangedWeapon : WeaponBase
 
         float actualDistance = Mathf.Max(0.01f, attackRange * rangeToDistanceRatio);
         float lifeTime = actualDistance / safeBulletSpeed;
-        projectileDamage.Configure(GetAttackDamage(), lifeTime, ReleaseBullet);
+        projectileDamage.Configure(GetAttackDamage(), lifeTime, ReleaseBullet, this);
     }
 
     private void ReleaseBullet(GameObject bullet)

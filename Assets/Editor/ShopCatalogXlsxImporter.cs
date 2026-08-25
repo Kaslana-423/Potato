@@ -117,11 +117,27 @@ public static class ShopCatalogXlsxImporter
             source.AppendLine($"    public override string Description => {ToLiteral(Get(row, "Special Effects"))};");
             source.AppendLine($"    public override int BasePrice => {ParseInt(Get(row, "Base price"), 0)};");
             source.AppendLine($"    public override ShopRarity Rarity => ShopRarity.Tier{tier};");
+            source.AppendLine($"    public override WeaponAttackStyle AttackStyle => WeaponAttackStyle.{ResolveWeaponAttackStyle(name)};");
             source.AppendLine($"    public override float Damage => {ToFloatLiteral(Get(row, "Damage"))};");
+            source.AppendLine($"    public override string DamageScalingText => {ToLiteral(Get(row, "Damage Scaling"))};");
+            source.AppendLine($"    public override string DamageScalingStats => {ToLiteral(ResolveWeaponScalingStats(name))};");
             source.AppendLine($"    public override float AttackCooldown => {ToFloatLiteral(Get(row, "Attack Speed (s)"), 1f)};");
             source.AppendLine($"    public override float AttackRange => {ToFloatLiteral(Get(row, "Range"))};");
+            source.AppendLine($"    public override float CritMultiplier => {ToFloatLiteral(Get(row, "Crit Mult"), 1.5f)};");
+            source.AppendLine($"    public override float CritChance => {ToFloatLiteral(Get(row, "Crit Chance %"))};");
+            source.AppendLine($"    public override float Knockback => {ToFloatLiteral(Get(row, "Knockback"))};");
+            string lifeSteal = string.IsNullOrWhiteSpace(Get(row, "Lifesteal %"))
+                ? Get(row, "Lifesteal")
+                : Get(row, "Lifesteal %");
+            source.AppendLine($"    public override float LifeSteal => {ToFloatLiteral(lifeSteal)};");
             source.AppendLine($"    public override string ClassTags => {ToLiteral(Get(row, "Class"))};");
             source.AppendLine($"    public override string SpecialEffects => {ToLiteral(Get(row, "Special Effects"))};");
+            if (string.Equals(name, "Stick", StringComparison.OrdinalIgnoreCase))
+            {
+                source.AppendLine("    public override string IconResourcePath => \"Weapon/stick\";");
+                source.AppendLine("    public override string RuntimePrefabResourcePath => \"Weapon/Prefabs/StartingStickWeapon\";");
+                source.AppendLine("    public override string RuntimeSpriteResourcePath => \"Weapon/stick\";");
+            }
             source.AppendLine("}");
 
             WriteGeneratedFile(outputDirectory, $"{className}.generated.cs", source.ToString());
@@ -130,6 +146,72 @@ public static class ShopCatalogXlsxImporter
         }
 
         return count;
+    }
+
+    private static WeaponAttackStyle ResolveWeaponAttackStyle(string weaponName)
+    {
+        switch ((weaponName ?? string.Empty).Trim())
+        {
+            case "Claw":
+            case "Drill":
+            case "Fist":
+            case "Flaming Brass Knuckles":
+            case "Ghost Flint":
+            case "Hand":
+            case "Hiking Pole (DLC)":
+            case "Jousting Lance":
+            case "Knife":
+            case "Lightning Shiv":
+            case "Power Fist":
+            case "Pruner":
+            case "Quarterstaff":
+            case "Scissors":
+            case "Screwdriver":
+            case "Sharp Tooth":
+            case "Spear":
+            case "Spiky Shield":
+            case "Stick":
+            case "Thief Dagger":
+            case "Trident (DLC)":
+                return WeaponAttackStyle.Thrust;
+            default:
+                return WeaponAttackStyle.Slash;
+        }
+    }
+
+    private static string ResolveWeaponScalingStats(string weaponName)
+    {
+        switch ((weaponName ?? string.Empty).Trim())
+        {
+            case "Anchor (DLC)": return "Melee Damage,Curse";
+            case "Brick (DLC)": return "Melee Damage,Engineering";
+            case "Captain's Sword (DLC)": return "Melee Damage,Curse";
+            case "Chainsaw (DLC)": return "Melee Damage,Engineering,Life Steal";
+            case "Chopper": return "Melee Damage,Max HP";
+            case "Claw": return "Attack Speed,Melee Damage";
+            case "DEX-troyer": return "Melee Damage,Engineering";
+            case "Drill": return "Melee Damage,Engineering";
+            case "Excalibur": return "Melee Damage,Max HP";
+            case "Hatchet": return "Melee Damage,Attack Speed";
+            case "Hiking Pole (DLC)": return "Melee Damage,Range";
+            case "Jousting Lance": return "Melee Damage,Speed";
+            case "Lute (DLC)": return "Melee Damage,Luck";
+            case "Mace (DLC)": return "Melee Damage,Attack Speed";
+            case "Plank": return "Melee Damage,Elemental Damage,Engineering";
+            case "Plasma Sledge": return "Melee Damage,Elemental Damage";
+            case "Quarterstaff": return "Level,Melee Damage";
+            case "Screwdriver": return "Melee Damage,Engineering";
+            case "Scythe": return "Melee Damage,Life Steal";
+            case "Sharp Tooth": return "Melee Damage,Life Steal";
+            case "Sickle (DLC)": return "Melee Damage,Harvesting";
+            case "Spiky Shield": return "Armor";
+            case "Spoon (DLC)": return "Melee Damage,Max HP";
+            case "Thunder Sword": return "Melee Damage,Elemental Damage";
+            case "Torch": return "Melee Damage,Elemental Damage";
+            case "Trident (DLC)": return "Melee Damage,Curse";
+            case "War Hammer (DLC)": return "Melee Damage,Engineering";
+            default: return "Melee Damage";
+        }
     }
 
     private static int GenerateItems(

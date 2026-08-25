@@ -5,9 +5,16 @@ public sealed class SpearTier4GeneratedWeapon : ShopWeaponDefinition
     public override string Description => "";
     public override int BasePrice => 149;
     public override ShopRarity Rarity => ShopRarity.Tier4;
+    public override WeaponAttackStyle AttackStyle => WeaponAttackStyle.Thrust;
     public override float Damage => 60f;
+    public override string DamageScalingText => "100%";
+    public override string DamageScalingStats => "Melee Damage";
     public override float AttackCooldown => 1.24f;
     public override float AttackRange => 500f;
+    public override float CritMultiplier => 2f;
+    public override float CritChance => 3f;
+    public override float Knockback => 0f;
+    public override float LifeSteal => 0f;
     public override string ClassTags => "Primitive";
     public override string SpecialEffects => "";
 }

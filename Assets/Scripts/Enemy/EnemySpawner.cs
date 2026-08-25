@@ -241,6 +241,9 @@ public sealed class EnemySpawner : MonoBehaviour
             DestroyAliveEnemies();
         }
 
+        RefillPlayerHealth();
+        StoreAndClearBattlefieldDrops();
+
         if (shopOpenDelaySeconds > 0f)
         {
             yield return new WaitForSeconds(shopOpenDelaySeconds);
@@ -465,6 +468,52 @@ public sealed class EnemySpawner : MonoBehaviour
         if (spawnPool == null)
         {
             spawnPool = gameObject.AddComponent<EnemySpawnPool>();
+        }
+    }
+
+    private void RefillPlayerHealth()
+    {
+        PlayerHealth playerHealth = playerTarget != null
+            ? playerTarget.GetComponentInParent<PlayerHealth>()
+            : null;
+
+        if (playerHealth == null && PlayerStats.Instance != null)
+        {
+            playerHealth = PlayerStats.Instance.GetComponent<PlayerHealth>();
+        }
+
+        if (playerHealth == null)
+        {
+            playerHealth = FindObjectOfType<PlayerHealth>();
+        }
+
+        playerHealth?.Refill();
+    }
+
+    private void StoreAndClearBattlefieldDrops()
+    {
+        BattlefieldDrop[] drops = FindObjectsOfType<BattlefieldDrop>(true);
+        int retainedMaterialUnits = 0;
+        foreach (BattlefieldDrop drop in drops)
+        {
+            if (drop == null || !drop.gameObject.scene.IsValid())
+            {
+                continue;
+            }
+
+            CoinPickup material = drop as CoinPickup;
+            if (material != null)
+            {
+                retainedMaterialUnits += material.RetainedMaterialUnits;
+            }
+
+            drop.gameObject.SetActive(false);
+            Destroy(drop.gameObject);
+        }
+
+        if (retainedMaterialUnits > 0)
+        {
+            PlayerWallet.GetOrCreate().AddRetainedMaterials(retainedMaterialUnits);
         }
     }
 

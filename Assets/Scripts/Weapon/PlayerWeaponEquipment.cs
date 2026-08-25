@@ -74,11 +74,14 @@ public sealed class PlayerWeaponEquipment : MonoBehaviour
         ClearRuntimeWeapons();
 
         int weaponCount = 0;
+        var familyCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         foreach (ShopContentDefinition content in boundBag.Contents)
         {
-            if (content is ShopWeaponDefinition)
+            if (content is ShopWeaponDefinition weaponDefinition)
             {
                 weaponCount++;
+                familyCounts.TryGetValue(weaponDefinition.FamilyId, out int familyCount);
+                familyCounts[weaponDefinition.FamilyId] = familyCount + 1;
             }
         }
 
@@ -91,7 +94,12 @@ public sealed class PlayerWeaponEquipment : MonoBehaviour
                 continue;
             }
 
-            WeaponBase runtimeWeapon = CreateRuntimeWeapon(definition, weaponIndex, weaponCount);
+            familyCounts.TryGetValue(definition.FamilyId, out int familyWeaponCount);
+            WeaponBase runtimeWeapon = CreateRuntimeWeapon(
+                definition,
+                weaponIndex,
+                weaponCount,
+                familyWeaponCount);
             if (runtimeWeapon != null)
             {
                 runtimeWeapons.Add(runtimeWeapon);
@@ -137,7 +145,8 @@ public sealed class PlayerWeaponEquipment : MonoBehaviour
     private WeaponBase CreateRuntimeWeapon(
         ShopWeaponDefinition definition,
         int weaponIndex,
-        int weaponCount)
+        int weaponCount,
+        int familyWeaponCount)
     {
         if (definition == null || weaponRoot == null)
         {
@@ -172,7 +181,7 @@ public sealed class PlayerWeaponEquipment : MonoBehaviour
             return null;
         }
 
-        ApplyDefinition(runtimeWeapon, definition);
+        ApplyDefinition(runtimeWeapon, definition, familyWeaponCount);
         instance.SetActive(true);
         return runtimeWeapon;
     }
@@ -264,7 +273,10 @@ public sealed class PlayerWeaponEquipment : MonoBehaviour
         return false;
     }
 
-    private static void ApplyDefinition(WeaponBase runtimeWeapon, ShopWeaponDefinition definition)
+    private static void ApplyDefinition(
+        WeaponBase runtimeWeapon,
+        ShopWeaponDefinition definition,
+        int familyWeaponCount)
     {
         runtimeWeapon.weaponName = definition.LocalizedDisplayName;
         runtimeWeapon.description = definition.LocalizedDescription;
@@ -274,19 +286,55 @@ public sealed class PlayerWeaponEquipment : MonoBehaviour
             ? Mathf.Max(0.01f, definition.AttackRange * ShopRangeToSlashWorldUnits)
             : Mathf.Max(0.01f, definition.AttackRange);
         runtimeWeapon.rarity = (WeaponRarity)Mathf.Clamp((int)definition.Rarity - 1, 0, 3);
+        float baseDamageBonus = CalculateFamilyDamageBonus(definition, familyWeaponCount);
+        runtimeWeapon.ConfigureRuntimeDefinition(definition, baseDamageBonus);
 
+        Sprite runtimeSprite = string.IsNullOrWhiteSpace(definition.RuntimeSpriteResourcePath)
+            ? null
+            : Resources.Load<Sprite>(definition.RuntimeSpriteResourcePath);
         Sprite icon = definition.LoadIcon();
-        if (icon == null)
+        if (runtimeSprite == null && icon == null)
         {
             return;
         }
 
         runtimeWeapon.weaponIcon = icon;
         SpriteRenderer renderer = runtimeWeapon.GetComponentInChildren<SpriteRenderer>(true);
-        if (renderer != null)
+        if (renderer != null && runtimeSprite != null)
         {
-            renderer.sprite = icon;
+            renderer.sprite = runtimeSprite;
         }
+    }
+
+    private static float CalculateFamilyDamageBonus(
+        ShopWeaponDefinition definition,
+        int familyWeaponCount)
+    {
+        if (definition == null
+            || familyWeaponCount <= 1
+            || !string.Equals(definition.FamilyId, "weapon.stick", StringComparison.OrdinalIgnoreCase))
+        {
+            return 0f;
+        }
+
+        float bonusPerAdditionalStick;
+        switch (definition.Rarity)
+        {
+            case ShopRarity.Tier2:
+                bonusPerAdditionalStick = 6f;
+                break;
+            case ShopRarity.Tier3:
+                bonusPerAdditionalStick = 8f;
+                break;
+            case ShopRarity.Tier4:
+                bonusPerAdditionalStick = 10f;
+                break;
+            default:
+                bonusPerAdditionalStick = 4f;
+                break;
+        }
+
+        return (familyWeaponCount - 1) * bonusPerAdditionalStick;
     }
 
     private Vector3 GetFormationPosition(int weaponIndex, int weaponCount)

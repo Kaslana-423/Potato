@@ -5,9 +5,16 @@ public sealed class LuteDLCTier3GeneratedWeapon : ShopWeaponDefinition
     public override string Description => "Enemies hit take 10% more damage for 3 seconds (max: 30% / 50% / 70% / 100% )";
     public override int BasePrice => 61;
     public override ShopRarity Rarity => ShopRarity.Tier3;
+    public override WeaponAttackStyle AttackStyle => WeaponAttackStyle.Slash;
     public override float Damage => 12f;
+    public override string DamageScalingText => "+50% +20%";
+    public override string DamageScalingStats => "Melee Damage,Luck";
     public override float AttackCooldown => 1.2f;
     public override float AttackRange => 200f;
+    public override float CritMultiplier => 1.5f;
+    public override float CritChance => 3f;
+    public override float Knockback => 2f;
+    public override float LifeSteal => 0f;
     public override string ClassTags => "Musical , Support";
     public override string SpecialEffects => "Enemies hit take 10% more damage for 3 seconds (max: 30% / 50% / 70% / 100% )";
 }

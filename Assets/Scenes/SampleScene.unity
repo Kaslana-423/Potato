@@ -610,6 +610,11 @@ PrefabInstance:
       propertyPath: m_AnchorMin.y
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 3669292706461121393, guid: cff1ec5a1db571f42a86f91dc07ee046,
+        type: 3}
+      propertyPath: m_SizeDelta.y
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 3908637423312185444, guid: cff1ec5a1db571f42a86f91dc07ee046,
         type: 3}
       propertyPath: m_AnchorMax.y
@@ -1835,8 +1840,75 @@ MonoBehaviour:
   waveSettings:
   - startWave: 1
     useCatalogWaveDuration: 1
-    waveDurationSeconds: 100
+    waveDurationSeconds: 10
     enemyRules:
+    - enemyId: enemy.baby_alien
+      baseSpawnInterval: 1.25
+      intervalMultiplierByWaveOffset:
+        serializedVersion: 2
+        m_Curve:
+        - serializedVersion: 3
+          time: 0
+          value: 1
+          inSlope: 0
+          outSlope: -0.025
+          tangentMode: 0
+          weightedMode: 0
+          inWeight: 0
+          outWeight: 0
+        - serializedVersion: 3
+          time: 10
+          value: 0.75
+          inSlope: -0.025
+          outSlope: 0
+          tangentMode: 0
+          weightedMode: 0
+          inWeight: 0
+          outWeight: 0
+        m_PreInfinity: 2
+        m_PostInfinity: 2
+        m_RotationOrder: 4
+      intervalMultiplierOverWaveProgress:
+        serializedVersion: 2
+        m_Curve:
+        - serializedVersion: 3
+          time: 0
+          value: 1
+          inSlope: 0
+          outSlope: 0
+          tangentMode: 0
+          weightedMode: 0
+          inWeight: 0
+          outWeight: 0
+        - serializedVersion: 3
+          time: 0.55
+          value: 0.82
+          inSlope: 0
+          outSlope: 0
+          tangentMode: 0
+          weightedMode: 0
+          inWeight: 0
+          outWeight: 0
+        - serializedVersion: 3
+          time: 1
+          value: 0.55
+          inSlope: 0
+          outSlope: 0
+          tangentMode: 0
+          weightedMode: 0
+          inWeight: 0
+          outWeight: 0
+        m_PreInfinity: 2
+        m_PostInfinity: 2
+        m_RotationOrder: 4
+      minimumSpawnInterval: 0.4
+      batchMode: 2
+      singleBatchMin: 1
+      singleBatchMax: 3
+      groupBatchMin: 2
+      groupBatchMax: 5
+      groupChance: 0.35
+      groupSpreadRadius: 1.2
     - enemyId: enemy.baby_alien
       baseSpawnInterval: 1.25
       intervalMultiplierByWaveOffset:
@@ -2267,7 +2339,8 @@ MonoBehaviour:
   spawnAreaSize: {x: 18.7, y: 17.3}
   mapBoundsPadding: 0.5
   spawnPositionAttempts: 12
-  spawnWarningPrefab: {fileID: 777938047}
+  spawnWarningPrefab: {fileID: 627070330266893472, guid: 0b2cae638567ec2439ec6b8933a3526b,
+    type: 3}
   spawnWarningSeconds: 0.65
   spawnWarningRadius: 0.75
 --- !u!4 &685816706
@@ -2285,18 +2358,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &777938047 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 627070330266893472, guid: 0b2cae638567ec2439ec6b8933a3526b,
-    type: 3}
-  m_PrefabInstance: {fileID: 8666260621263759781}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0b6bdcec252da814197143377e8707b1, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!114 &987940478 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 5291630898719750036, guid: cff1ec5a1db571f42a86f91dc07ee046,
@@ -2353,11 +2414,36 @@ MonoBehaviour:
   statusText: {fileID: 0}
   relicBag: {fileID: 1038682043}
   weaponBag: {fileID: 987940478}
+  playerWeaponEquipment: {fileID: 0}
   playerWallet: {fileID: 0}
   currencyDisplay: {fileID: 0}
   refreshOnStart: 1
   baseRefreshCost: 1
   refreshCostIncrease: 1
+  waveSource: {fileID: 0}
+  rarityWeightProfiles:
+  - wave: 1
+    tier1Weight: 90
+    tier2Weight: 10
+    tier3Weight: 0
+    tier4Weight: 0
+  - wave: 5
+    tier1Weight: 60
+    tier2Weight: 28
+    tier3Weight: 10
+    tier4Weight: 0
+  - wave: 10
+    tier1Weight: 40
+    tier2Weight: 35
+    tier3Weight: 20
+    tier4Weight: 5
+  tier2UnlockWave: 1
+  tier3UnlockWave: 3
+  tier4UnlockWave: 7
+  luckTier1ReductionPerPoint: 0.25
+  luckTier2WeightPerPoint: 0.12
+  luckTier3WeightPerPoint: 0.08
+  luckTier4WeightPerPoint: 0.05
 --- !u!1 &1072355487
 GameObject:
   m_ObjectHideFlags: 0
@@ -2483,6 +2569,28 @@ MonoBehaviour:
   speed: 0
   luck: 0
   harvesting: 0
+  consumableHeal: 0
+  materialsHealing: 0
+  xpGain: 0
+  pickupRange: 0
+  itemsPrice: 0
+  explosionDamage: 0
+  explosionSize: 0
+  bounces: 0
+  piercing: 0
+  piercingDamage: 0
+  damageAgainstBosses: 0
+  structureAttackSpeed: 0
+  structureRange: 0
+  burningSpeed: 0
+  burningSpread: 0
+  knockback: 0
+  doubleMaterialChance: 0
+  freeRerolls: 0
+  trees: 0
+  enemies: 0
+  enemySpeed: 0
+  rerollPrice: 0
 --- !u!114 &1072355494
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2547,6 +2655,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   startingCoins: 0
   coins: 0
+  retainedMaterials: 0
   resetToStartingCoinsOnAwake: 1
 --- !u!114 &1174332303 stripped
 MonoBehaviour:
@@ -7239,6 +7348,9 @@ MonoBehaviour:
   defaultMinCoinsDropped: 1
   defaultMaxCoinsDropped: 1
   defaultCoinScatterRadius: 0.45
+  fruitPrefab: {fileID: 0}
+  lootCratePrefab: {fileID: 0}
+  defaultLootScatterRadius: 0.45
 --- !u!4 &1601784501
 Transform:
   m_ObjectHideFlags: 0

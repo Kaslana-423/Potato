@@ -29,6 +29,8 @@ public sealed class EnemyShopFlow
             shopManager.RefreshShop();
         }
 
+        shopManager?.OpenPendingLootCrates();
+
         BindExitButton(shopExitButton);
     }
 

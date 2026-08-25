@@ -5,9 +5,16 @@ public sealed class ScissorsTier4GeneratedWeapon : ShopWeaponDefinition
     public override string Description => "";
     public override int BasePrice => 122;
     public override ShopRarity Rarity => ShopRarity.Tier4;
+    public override WeaponAttackStyle AttackStyle => WeaponAttackStyle.Thrust;
     public override float Damage => 20f;
+    public override string DamageScalingText => "80%";
+    public override string DamageScalingStats => "Melee Damage";
     public override float AttackCooldown => 0.86f;
     public override float AttackRange => 150f;
+    public override float CritMultiplier => 2.5f;
+    public override float CritChance => 20f;
+    public override float Knockback => 2f;
+    public override float LifeSteal => 60f;
     public override string ClassTags => "Medical , Precise";
     public override string SpecialEffects => "";
 }

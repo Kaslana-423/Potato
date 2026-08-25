@@ -13,16 +13,22 @@ public sealed class ProjectileDamageOnHit : MonoBehaviour
     private bool released;
     private int version;
     private float expiresAt;
+    private WeaponBase sourceWeapon;
 
     public int Version => version;
 
-    public int Configure(float newDamage, float lifetime, Action<GameObject> newReleaseAction)
+    public int Configure(
+        float newDamage,
+        float lifetime,
+        Action<GameObject> newReleaseAction,
+        WeaponBase newSourceWeapon = null)
     {
         damage = Mathf.Max(0f, newDamage);
         releaseAction = newReleaseAction;
         released = false;
         hitEnemies.Clear();
         expiresAt = Time.time + Mathf.Max(0.01f, lifetime);
+        sourceWeapon = newSourceWeapon;
         version++;
         return version;
     }
@@ -72,7 +78,15 @@ public sealed class ProjectileDamageOnHit : MonoBehaviour
         }
 
         hitEnemies.Add(enemy);
-        enemy.TakeDamage(damage);
+        float finalDamage = sourceWeapon != null
+            ? sourceWeapon.ModifyDamageForTarget(damage, enemy)
+            : damage;
+        enemy.TakeDamage(finalDamage);
+        if (sourceWeapon != null)
+        {
+            enemy.ApplyKnockback(transform.position, sourceWeapon.GetKnockback());
+            sourceWeapon.HandleSuccessfulHit(finalDamage);
+        }
 
         if (releaseOnEnemyHit)
         {
@@ -90,6 +104,7 @@ public sealed class ProjectileDamageOnHit : MonoBehaviour
         released = true;
         Action<GameObject> callback = releaseAction;
         releaseAction = null;
+        sourceWeapon = null;
         Rigidbody2D rb = GetComponent<Rigidbody2D>();
         if (rb != null)
         {

@@ -6,10 +6,13 @@ public sealed class EnemyChaseAI : MonoBehaviour
     [SerializeField] private Transform target;
     [SerializeField] private bool findPlayerOnStart = true;
     [SerializeField] private float repathInterval = 0.5f;
+    [SerializeField, Min(0f)] private float knockbackUnitsPerPoint = 0.12f;
+    [SerializeField, Min(0f)] private float knockbackDamping = 10f;
 
     private EnemyBase enemy;
     private Rigidbody2D rb;
     private float repathTimer;
+    private Vector2 knockbackVelocity;
 
     private void Awake()
     {
@@ -57,7 +60,7 @@ public sealed class EnemyChaseAI : MonoBehaviour
 
         float playerEnemySpeed = PlayerStats.Instance != null ? PlayerStats.Instance.EnemySpeed : 0f;
         float speedMultiplier = Mathf.Max(0f, 1f + playerEnemySpeed / 100f);
-        Vector2 velocity = direction.normalized * enemy.MoveSpeed * speedMultiplier;
+        Vector2 velocity = direction.normalized * enemy.MoveSpeed * speedMultiplier + knockbackVelocity;
         if (rb != null)
         {
             rb.velocity = velocity;
@@ -66,6 +69,11 @@ public sealed class EnemyChaseAI : MonoBehaviour
         {
             transform.position += (Vector3)(velocity * Time.fixedDeltaTime);
         }
+
+        knockbackVelocity = Vector2.MoveTowards(
+            knockbackVelocity,
+            Vector2.zero,
+            knockbackDamping * Time.fixedDeltaTime);
     }
 
     public void SetTarget(Transform newTarget)
@@ -73,11 +81,22 @@ public sealed class EnemyChaseAI : MonoBehaviour
         target = newTarget;
     }
 
+    public void ApplyKnockback(Vector2 direction, float knockbackPoints)
+    {
+        if (direction.sqrMagnitude <= 0.0001f || knockbackPoints <= 0f)
+        {
+            return;
+        }
+
+        knockbackVelocity += direction.normalized * knockbackPoints * knockbackUnitsPerPoint;
+    }
+
     private void OnDisable()
     {
         StopMoving();
         target = null;
         repathTimer = 0f;
+        knockbackVelocity = Vector2.zero;
     }
 
     private void StopMoving()

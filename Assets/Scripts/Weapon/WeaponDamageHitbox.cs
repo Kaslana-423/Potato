@@ -69,6 +69,9 @@ public sealed class WeaponDamageHitbox : MonoBehaviour
         }
 
         hitEnemies.Add(enemy);
-        enemy.TakeDamage(weapon.GetAttackDamage());
+        float damage = weapon.ModifyDamageForTarget(weapon.GetAttackDamage(), enemy);
+        enemy.TakeDamage(damage);
+        enemy.ApplyKnockback(weapon.transform.position, weapon.GetKnockback());
+        weapon.HandleSuccessfulHit(damage);
     }
 }

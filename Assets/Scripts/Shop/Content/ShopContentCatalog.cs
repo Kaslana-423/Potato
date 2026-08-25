@@ -12,12 +12,6 @@ public static class ShopContentCatalog
         var contents = new List<ShopContentDefinition>();
         var ids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        AddUnique(contents, ids, new BrickDlcWeapon());
-        AddUnique(contents, ids, new CactiClubWeapon());
-        AddUnique(contents, ids, new ChopperWeapon());
-        AddUnique(contents, ids, new ClawWeapon());
-        AddUnique(contents, ids, new KnifeWeapon());
-
         AddUnique(contents, ids, new AcidItem());
         AddUnique(contents, ids, new AdrenalineItem());
         AddUnique(contents, ids, new AlienBabyItem());

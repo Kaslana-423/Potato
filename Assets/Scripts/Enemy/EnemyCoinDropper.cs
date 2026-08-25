@@ -56,7 +56,9 @@ public sealed class EnemyCoinDropper : MonoBehaviour
         {
             Vector2 offset = scatterRadius > 0f ? Random.insideUnitCircle * scatterRadius : Vector2.zero;
             CoinPickup coin = Instantiate(coinPrefab, transform.position + (Vector3)offset, Quaternion.identity);
-            coin.SetValue(coinValue);
+            PlayerWallet wallet = PlayerWallet.GetOrCreate();
+            int retainedBonus = wallet != null ? wallet.ConsumeRetainedMaterialBonus(coinValue) : 0;
+            coin.ConfigureMaterialValue(coinValue + retainedBonus, coinValue);
         }
     }
 }

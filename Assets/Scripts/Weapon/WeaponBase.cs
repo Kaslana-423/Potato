@@ -24,6 +24,9 @@ public abstract class WeaponBase : MonoBehaviour
     protected float currentCooldown = 0f;
     protected bool isAttacking = false;
     private int attackSequence;
+    private ShopWeaponDefinition runtimeDefinition;
+    private float runtimeBaseDamageBonus;
+    private float nextLifeStealTime;
 
     public bool IsAttacking => isAttacking;
     public int AttackSequence => attackSequence;
@@ -63,20 +66,100 @@ public abstract class WeaponBase : MonoBehaviour
     protected virtual void Attack()
     {
         attackSequence++;
-        currentCooldown = attackCooldown;
+        currentCooldown = GetEffectiveAttackCooldown();
     }
 
     public virtual float GetAttackDamage()
     {
         PlayerStats stats = PlayerStats.Instance;
-        float flatDamage = attackPower;
+        float flatDamage = runtimeDefinition != null
+            ? runtimeDefinition.CalculateDamage(stats) + runtimeBaseDamageBonus
+            : attackPower;
         if (stats != null)
         {
-            flatDamage += GetFlatDamageBonus(stats);
+            if (runtimeDefinition == null)
+            {
+                flatDamage += GetFlatDamageBonus(stats);
+            }
+
             flatDamage *= 1f + stats.Damage / 100f;
         }
 
-        return Mathf.Ceil(Mathf.Max(0f, flatDamage));
+        float damage = Mathf.Ceil(Mathf.Max(0f, flatDamage));
+        float critChance = (runtimeDefinition != null ? runtimeDefinition.CritChance : 0f)
+            + (stats != null ? stats.CritChance : 0f);
+        if (critChance > 0f && Random.value < Mathf.Clamp01(critChance / 100f))
+        {
+            float critMultiplier = runtimeDefinition != null
+                ? Mathf.Max(1f, runtimeDefinition.CritMultiplier)
+                : 1.5f;
+            damage = Mathf.Ceil(damage * critMultiplier);
+        }
+
+        return damage;
+    }
+
+    public void ConfigureRuntimeDefinition(ShopWeaponDefinition definition, float baseDamageBonus = 0f)
+    {
+        runtimeDefinition = definition;
+        runtimeBaseDamageBonus = baseDamageBonus;
+    }
+
+    public float ModifyDamageForTarget(float damage, EnemyBase enemy)
+    {
+        PlayerStats stats = PlayerStats.Instance;
+        if (enemy != null
+            && stats != null
+            && (enemy.Category == EnemyCategory.Boss || enemy.Category == EnemyCategory.DlcBoss))
+        {
+            damage *= Mathf.Max(0f, 1f + stats.DamageAgainstBosses / 100f);
+        }
+
+        return Mathf.Ceil(Mathf.Max(0f, damage));
+    }
+
+    public float GetKnockback()
+    {
+        float knockback = runtimeDefinition != null ? runtimeDefinition.Knockback : 0f;
+        if (PlayerStats.Instance != null)
+        {
+            knockback += PlayerStats.Instance.Knockback;
+        }
+
+        return Mathf.Max(0f, knockback);
+    }
+
+    public void HandleSuccessfulHit(float damage)
+    {
+        if (damage <= 0f || Time.time < nextLifeStealTime)
+        {
+            return;
+        }
+
+        PlayerStats stats = PlayerStats.Instance;
+        float lifeStealChance = runtimeDefinition != null ? runtimeDefinition.LifeSteal : 0f;
+        if (stats != null)
+        {
+            lifeStealChance += stats.LifeSteal;
+        }
+
+        if (lifeStealChance <= 0f || Random.value >= Mathf.Clamp01(lifeStealChance / 100f))
+        {
+            return;
+        }
+
+        PlayerHealth health = stats != null ? stats.GetComponent<PlayerHealth>() : null;
+        if (health != null)
+        {
+            health.Heal(1);
+            nextLifeStealTime = Time.time + 0.1f;
+        }
+    }
+
+    public float GetEffectiveAttackCooldown()
+    {
+        float attackSpeed = PlayerStats.Instance != null ? PlayerStats.Instance.AttackSpeed : 0f;
+        return Mathf.Max(0.01f, attackCooldown / Mathf.Max(0.1f, 1f + attackSpeed / 100f));
     }
 
     protected virtual float GetFlatDamageBonus(PlayerStats stats)

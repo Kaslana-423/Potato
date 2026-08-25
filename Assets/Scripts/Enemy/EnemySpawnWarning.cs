@@ -11,10 +11,12 @@ public sealed class EnemySpawnWarning : MonoBehaviour
     private float duration;
     private float timer;
     private Vector3 baseScale;
+    private bool isPlaying;
 
     private void Awake()
     {
         EnsureRenderer();
+        spriteRenderer.enabled = false;
     }
 
     public void Play(Vector3 position, float warningDuration, float radius)
@@ -23,14 +25,21 @@ public sealed class EnemySpawnWarning : MonoBehaviour
         duration = Mathf.Max(0.01f, warningDuration);
         timer = 0f;
         baseScale = Vector3.one * Mathf.Max(0.1f, radius * 2f);
+        isPlaying = true;
 
         EnsureRenderer();
+        spriteRenderer.enabled = true;
         transform.localScale = baseScale;
         spriteRenderer.color = warningColor;
     }
 
     private void Update()
     {
+        if (!isPlaying)
+        {
+            return;
+        }
+
         timer += Time.deltaTime;
         float progress = Mathf.Clamp01(timer / duration);
         float pulse = 1f + Mathf.Sin(progress * Mathf.PI * 6f) * 0.08f * pulseScale;
@@ -43,6 +52,7 @@ public sealed class EnemySpawnWarning : MonoBehaviour
 
         if (timer >= duration)
         {
+            isPlaying = false;
             Destroy(gameObject);
         }
     }

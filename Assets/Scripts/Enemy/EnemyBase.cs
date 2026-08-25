@@ -90,6 +90,26 @@ public class EnemyBase : MonoBehaviour
         }
     }
 
+    public void ApplyKnockback(Vector2 sourcePosition, float knockback)
+    {
+        if (dead || knockback <= 0f)
+        {
+            return;
+        }
+
+        Vector2 direction = (Vector2)transform.position - sourcePosition;
+        if (direction.sqrMagnitude <= 0.0001f)
+        {
+            return;
+        }
+
+        EnemyChaseAI chase = GetComponent<EnemyChaseAI>();
+        if (chase != null)
+        {
+            chase.ApplyKnockback(direction.normalized, knockback * (1f - Mathf.Clamp01(knockbackResistance)));
+        }
+    }
+
     protected virtual void Die()
     {
         if (dead)
@@ -102,6 +122,12 @@ public class EnemyBase : MonoBehaviour
         if (coinDropper != null)
         {
             coinDropper.DropCoins();
+        }
+
+        EnemyLootDropper lootDropper = GetComponent<EnemyLootDropper>();
+        if (lootDropper != null)
+        {
+            lootDropper.DropLoot(consumableDropChance, lootCrateDropChance);
         }
 
         Died?.Invoke(this);

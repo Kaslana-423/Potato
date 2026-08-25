@@ -5,9 +5,16 @@ public sealed class DEXTroyerTier4GeneratedWeapon : ShopWeaponDefinition
     public override string Description => "50% chance to explode on hit Hitting an enemy spawns a lightning projectile that bounces 5 times and deals 30 ( +100% ) damage";
     public override int BasePrice => 315;
     public override ShopRarity Rarity => ShopRarity.Tier4;
+    public override WeaponAttackStyle AttackStyle => WeaponAttackStyle.Slash;
     public override float Damage => 100f;
+    public override string DamageScalingText => "+100% +100%";
+    public override string DamageScalingStats => "Melee Damage,Engineering";
     public override float AttackCooldown => 1.33f;
     public override float AttackRange => 400f;
+    public override float CritMultiplier => 2f;
+    public override float CritChance => 3f;
+    public override float Knockback => 10f;
+    public override float LifeSteal => 0f;
     public override string ClassTags => "Legendary , Explosive";
     public override string SpecialEffects => "50% chance to explode on hit Hitting an enemy spawns a lightning projectile that bounces 5 times and deals 30 ( +100% ) damage";
 }

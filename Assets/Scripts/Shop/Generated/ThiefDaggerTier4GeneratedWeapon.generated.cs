@@ -5,9 +5,16 @@ public sealed class ThiefDaggerTier4GeneratedWeapon : ShopWeaponDefinition
     public override string Description => "50% / 56% / 62% / 80% to gain 1 material when killing an enemy with a critical hit with this weapon";
     public override int BasePrice => 105;
     public override ShopRarity Rarity => ShopRarity.Tier4;
+    public override WeaponAttackStyle AttackStyle => WeaponAttackStyle.Thrust;
     public override float Damage => 30f;
+    public override string DamageScalingText => "50%";
+    public override string DamageScalingStats => "Melee Damage";
     public override float AttackCooldown => 0.73f;
     public override float AttackRange => 150f;
+    public override float CritMultiplier => 2f;
+    public override float CritChance => 40f;
+    public override float Knockback => 2f;
+    public override float LifeSteal => 0f;
     public override string ClassTags => "Precise";
     public override string SpecialEffects => "50% / 56% / 62% / 80% to gain 1 material when killing an enemy with a critical hit with this weapon";
 }
