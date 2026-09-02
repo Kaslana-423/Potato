@@ -93,6 +93,8 @@ public sealed class CoinPickup : BattlefieldDrop
         }
 
         PlayerWallet.GetOrCreate().AddCoins(collectedValue);
+        PlayerExperience experience = PlayerExperience.GetOrCreate();
+        experience?.AddMaterialExperience(collectedValue);
 
         if (stats != null
             && stats.MaterialsHealing > 0

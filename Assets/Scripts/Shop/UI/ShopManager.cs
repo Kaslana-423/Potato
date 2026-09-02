@@ -146,6 +146,102 @@ public sealed class ShopManager : MonoBehaviour
             : 0;
     }
 
+    public ShopRunSaveData CaptureRunSaveState()
+    {
+        var saveData = new ShopRunSaveData
+        {
+            paidRefreshCount = paidRefreshCount,
+            freeRefreshesUsed = freeRefreshesUsed
+        };
+
+        for (int index = 0; index < currentOffers.Count; index++)
+        {
+            ShopContentDefinition offer = currentOffers[index];
+            saveData.offerIds.Add(offer != null ? offer.Id : string.Empty);
+            bool locked = index < offerViews.Length
+                && offerViews[index] != null
+                && offerViews[index].IsLocked;
+            saveData.lockedOffers.Add(locked);
+        }
+
+        foreach (KeyValuePair<string, int> purchase in purchaseCounts)
+        {
+            saveData.purchaseCounts.Add(new RunPurchaseSaveEntry
+            {
+                contentId = purchase.Key,
+                count = purchase.Value
+            });
+        }
+
+        return saveData;
+    }
+
+    public void RestoreRunSaveState(ShopRunSaveData saveData)
+    {
+        if (saveData == null)
+        {
+            return;
+        }
+
+        EnsureUi();
+        paidRefreshCount = Mathf.Max(0, saveData.paidRefreshCount);
+        freeRefreshesUsed = Mathf.Max(0, saveData.freeRefreshesUsed);
+
+        purchaseCounts.Clear();
+        if (saveData.purchaseCounts != null)
+        {
+            foreach (RunPurchaseSaveEntry purchase in saveData.purchaseCounts)
+            {
+                if (purchase != null && !string.IsNullOrWhiteSpace(purchase.contentId) && purchase.count > 0)
+                {
+                    purchaseCounts[purchase.contentId] = purchase.count;
+                }
+            }
+        }
+
+        currentOffers.Clear();
+        if (saveData.offerIds != null)
+        {
+            for (int index = 0; index < saveData.offerIds.Count; index++)
+            {
+                currentOffers.Add(ShopContentCatalog.FindById(saveData.offerIds[index]));
+            }
+        }
+
+        for (int index = 0; index < offerViews.Length; index++)
+        {
+            ShopOfferView view = offerViews[index];
+            if (view == null)
+            {
+                continue;
+            }
+
+            ShopContentDefinition offer = index < currentOffers.Count ? currentOffers[index] : null;
+            if (offer == null)
+            {
+                view.SetVisible(false);
+                continue;
+            }
+
+            bool locked = saveData.lockedOffers != null
+                && index < saveData.lockedOffers.Count
+                && saveData.lockedOffers[index];
+            view.Bind(
+                offer,
+                SelectOffer,
+                TryPurchaseOffer,
+                GetPurchaseCount(offer.Id),
+                HandleOfferLockChanged,
+                locked,
+                GetOfferPrice(offer),
+                CanAffordOffer(offer));
+            view.SetVisible(true);
+        }
+
+        UpdateRefreshButtonLabel();
+        UpdateOfferPrices();
+    }
+
     private void Awake()
     {
         EnsureRarityProfiles();
@@ -305,7 +401,6 @@ public sealed class ShopManager : MonoBehaviour
     public void OpenShop()
     {
         SetShopOpen(true);
-        OpenPendingLootCrates();
     }
 
     public void CloseShop()
@@ -389,61 +484,77 @@ public sealed class ShopManager : MonoBehaviour
             : $"花费 {cost} 金币刷新商店；锁定商品已保留。下次刷新需要 {CurrentRefreshCost}。");
     }
 
-    public void OpenPendingLootCrates()
+    public bool TryGenerateLootCrateReward(out ShopItemDefinition reward)
     {
-        PlayerLootCrateInventory inventory = PlayerLootCrateInventory.GetOrCreate();
-        if (inventory == null || inventory.PendingCrates <= 0)
+        var itemPool = ShopContentCatalog.All
+            .Where(content => content is ShopItemDefinition
+                && !HasReachedPurchaseLimit(content))
+            .ToList();
+        if (itemPool.Count == 0)
         {
-            return;
+            reward = null;
+            return false;
+        }
+
+        reward = TakeWeightedRandomOffer(itemPool, BuildLootCrateRarityWeights()) as ShopItemDefinition;
+        return reward != null;
+    }
+
+    public bool TryAcceptLootCrateReward(ShopItemDefinition reward, out string failureReason)
+    {
+        failureReason = string.Empty;
+        if (reward == null)
+        {
+            failureReason = "箱子奖励为空。";
+            return false;
+        }
+
+        if (HasReachedPurchaseLimit(reward))
+        {
+            failureReason = $"{reward.LocalizedDisplayName} 已达到持有上限。";
+            return false;
         }
 
         EnsureUi();
         if (relicBag == null)
         {
-            SetStatus("未找到道具背包，暂时无法开启战利品箱。界面修复后箱子仍会保留。");
-            return;
+            failureReason = "未找到道具背包。";
+            return false;
         }
 
-        var grantedNames = new List<string>();
-        while (inventory.PendingCrates > 0)
+        if (!relicBag.CanAccept(reward, out failureReason)
+            || !relicBag.TryAdd(reward, out failureReason))
         {
-            var itemPool = ShopContentCatalog.All
-                .Where(content => content is ShopItemDefinition
-                    && !HasReachedPurchaseLimit(content))
-                .ToList();
-            if (itemPool.Count == 0)
-            {
-                break;
-            }
-
-            ShopContentDefinition reward = TakeWeightedRandomOffer(itemPool, BuildCurrentRarityWeights());
-            string failureReason = string.Empty;
-            if (reward == null
-                || !relicBag.CanAccept(reward, out failureReason)
-                || !relicBag.TryAdd(reward, out failureReason))
-            {
-                SetStatus(string.IsNullOrWhiteSpace(failureReason)
-                    ? "战利品箱奖励无法加入道具背包，未开启的箱子仍会保留。"
-                    : failureReason);
-                break;
-            }
-
-            if (!inventory.TryConsumeCrate())
-            {
-                break;
-            }
-
-            RegisterPurchase(reward);
-            ShopItemEffectApplier.Apply(reward as ShopItemDefinition, PlayerStats.Instance);
-            grantedNames.Add(reward.LocalizedDisplayName);
+            return false;
         }
 
-        if (grantedNames.Count > 0)
+        RegisterPurchase(reward);
+        ShopItemEffectApplier.Apply(reward, PlayerStats.Instance);
+        UpdateOfferPrices();
+        UpdateRefreshButtonLabel();
+        return true;
+    }
+
+    public int GetLootCrateRecycleValue(ShopItemDefinition reward)
+    {
+        if (reward == null)
         {
-            UpdateOfferPrices();
-            UpdateRefreshButtonLabel();
-            SetStatus($"已开启 {grantedNames.Count} 个战利品箱：{string.Join("、", grantedNames)}");
+            return 0;
         }
+
+        int currentPrice = GetOfferPrice(reward);
+        return currentPrice > 0 ? Mathf.Max(1, Mathf.FloorToInt(currentPrice * 0.25f)) : 0;
+    }
+
+    public int RecycleLootCrateReward(ShopItemDefinition reward)
+    {
+        int value = GetLootCrateRecycleValue(reward);
+        if (value > 0)
+        {
+            ResolvePlayerWallet()?.AddCoins(value);
+        }
+
+        return value;
     }
 
     private void GenerateOffersPreservingLocks()
@@ -812,6 +923,11 @@ public sealed class ShopManager : MonoBehaviour
             if (offerView != null)
             {
                 offerView.MarkPurchased();
+                int purchasedIndex = Array.IndexOf(offerViews, offerView);
+                if (purchasedIndex >= 0 && purchasedIndex < currentOffers.Count)
+                {
+                    currentOffers[purchasedIndex] = null;
+                }
             }
 
             string effectStatus = hasItemEffectResult ? BuildItemEffectStatus(item, effectResult) : string.Empty;
@@ -966,6 +1082,29 @@ public sealed class ShopManager : MonoBehaviour
             ? Mathf.Max(0f, tier4 + luck * luckTier4WeightPerPoint)
             : 0f;
 
+        return new ShopRarityWeights(tier1, tier2, tier3, tier4);
+    }
+
+    private ShopRarityWeights BuildLootCrateRarityWeights()
+    {
+        int wave = waveSource != null ? Mathf.Max(1, waveSource.CurrentWave) : 1;
+        int luck = PlayerStats.Instance != null ? PlayerStats.Instance.Luck : 0;
+        float luckMultiplier = Mathf.Max(0f, 1f + luck / 100f);
+
+        float cumulativeTier2 = wave >= 2
+            ? Mathf.Min(0.60f, 0.06f * (wave - 1) * luckMultiplier)
+            : 0f;
+        float cumulativeTier3 = wave >= 4
+            ? Mathf.Min(0.25f, 0.02f * (wave - 3) * luckMultiplier)
+            : 0f;
+        float cumulativeTier4 = wave >= 8
+            ? Mathf.Min(0.08f, 0.0023f * (wave - 7) * luckMultiplier)
+            : 0f;
+
+        float tier4 = cumulativeTier4;
+        float tier3 = Mathf.Max(0f, cumulativeTier3 - tier4);
+        float tier2 = Mathf.Max(0f, cumulativeTier2 - cumulativeTier3);
+        float tier1 = Mathf.Max(0f, 1f - cumulativeTier2);
         return new ShopRarityWeights(tier1, tier2, tier3, tier4);
     }
 

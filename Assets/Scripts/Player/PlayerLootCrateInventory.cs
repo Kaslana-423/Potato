@@ -38,4 +38,9 @@ public sealed class PlayerLootCrateInventory : MonoBehaviour
         pendingCrates--;
         return true;
     }
+
+    public void SetPendingCrates(int amount)
+    {
+        pendingCrates = Mathf.Max(0, amount);
+    }
 }

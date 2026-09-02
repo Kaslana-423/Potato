@@ -7,6 +7,25 @@ public static class ShopContentCatalog
 
     public static IReadOnlyList<ShopContentDefinition> All => all;
 
+    public static ShopContentDefinition FindById(string contentId)
+    {
+        if (string.IsNullOrWhiteSpace(contentId))
+        {
+            return null;
+        }
+
+        for (int index = 0; index < all.Count; index++)
+        {
+            ShopContentDefinition content = all[index];
+            if (content != null && string.Equals(content.Id, contentId, StringComparison.OrdinalIgnoreCase))
+            {
+                return content;
+            }
+        }
+
+        return null;
+    }
+
     private static IReadOnlyList<ShopContentDefinition> BuildCatalog()
     {
         var contents = new List<ShopContentDefinition>();

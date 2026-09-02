@@ -11,6 +11,10 @@ public sealed class EnemySpawner : MonoBehaviour
     [SerializeField] private bool spawnOnStart = true;
     [SerializeField] private bool clearAliveEnemiesWhenLevelEnds = true;
 
+    [Header("Run Completion")]
+    [SerializeField] private bool endRunAfterFinalWave = true;
+    [SerializeField, Min(1)] private int finalWave = 20;
+
     [Header("Shop Flow")]
     [SerializeField] private ShopManager shopManager;
     [SerializeField] private GameObject shopRoot;
@@ -55,6 +59,11 @@ public sealed class EnemySpawner : MonoBehaviour
 
     private EnemyLifetimeTracker lifetimeTracker;
     private EnemyShopFlow shopFlow;
+    private PlayerExperience playerExperience;
+    private LevelUpRewardController levelUpRewardController;
+    private LootCrateRewardController lootCrateRewardController;
+    private GameRunSettlementController settlementController;
+    private RunSaveController saveController;
     private Coroutine spawnRoutine;
     private Coroutine nextLevelRoutine;
     private bool levelRunning;
@@ -62,10 +71,21 @@ public sealed class EnemySpawner : MonoBehaviour
     private float currentWaveDurationSeconds;
     private float currentWaveStartTime;
     private float lastWaveElapsedSeconds;
+    private int totalEnemiesKilled;
+    private bool runEnded;
 
     public int CurrentWave => currentWave;
     public int AliveCount => lifetimeTracker != null ? lifetimeTracker.AliveCount : 0;
     public bool IsLevelRunning => levelRunning;
+    public int TotalEnemiesKilled => totalEnemiesKilled;
+    public int FinalWave => finalWave;
+    public bool HasRunEnded => runEnded;
+    public bool IsStartingNextWave => nextLevelRoutine != null;
+    public RunSavePhase CurrentSavePhase => levelRunning
+        ? RunSavePhase.Combat
+        : shopManager != null && shopManager.IsOpen
+            ? RunSavePhase.Shop
+            : RunSavePhase.PostWave;
     public float CurrentWaveDurationSeconds => currentWaveDurationSeconds > 0f
         ? currentWaveDurationSeconds
         : GetWaveDuration(currentWave);
@@ -82,6 +102,7 @@ public sealed class EnemySpawner : MonoBehaviour
     private void OnValidate()
     {
         currentWave = Mathf.Max(1, currentWave);
+        finalWave = Mathf.Max(1, finalWave);
         fallbackSpawnInterval = Mathf.Max(0.05f, fallbackSpawnInterval);
         fallbackEnemiesPerSpawn = Mathf.Max(1, fallbackEnemiesPerSpawn);
         spawnRadius = Mathf.Max(0f, spawnRadius);
@@ -102,6 +123,7 @@ public sealed class EnemySpawner : MonoBehaviour
         PrewarmEnemyPools();
         EnsureLifetimeTracker();
         EnsureShopFlow();
+        EnsureLevelUpFlow();
         shopFlow.AutoBind(ref shopManager, shopRoot, ref shopExitButton);
         shopFlow.BindExitButton(shopExitButton);
         if (hideShopOnStart)
@@ -114,7 +136,16 @@ public sealed class EnemySpawner : MonoBehaviour
             FindPlayerTarget();
         }
 
-        if (spawnOnStart)
+        EnsureSettlementFlow();
+        EnsureSaveFlow();
+        GameplayPauseController.GetOrCreate(this);
+
+        if (GameSessionState.TryLoadRun(out RunSaveData saveData))
+        {
+            saveController.SetSuspended(true);
+            StartCoroutine(RestoreSavedRunRoutine(saveData));
+        }
+        else if (spawnOnStart)
         {
             StartSpawning();
         }
@@ -129,10 +160,16 @@ public sealed class EnemySpawner : MonoBehaviour
     [ContextMenu("Start Spawning")]
     public void StartSpawning()
     {
+        if (runEnded)
+        {
+            return;
+        }
+
         StopSpawning();
         levelRunId++;
         levelRunning = true;
         spawnRoutine = StartCoroutine(SpawnWaveLoop());
+        saveController?.SaveNow(RunSavePhase.Combat);
     }
 
     [ContextMenu("Stop Spawning")]
@@ -168,11 +205,17 @@ public sealed class EnemySpawner : MonoBehaviour
 
     public void ExitShopAndStartNextLevel()
     {
+        if (runEnded)
+        {
+            return;
+        }
+
         if (nextLevelRoutine != null)
         {
             StopCoroutine(nextLevelRoutine);
         }
 
+        saveController?.SaveNow(RunSavePhase.Shop);
         nextLevelRoutine = StartCoroutine(ExitShopAndStartNextLevelRoutine());
     }
 
@@ -243,10 +286,54 @@ public sealed class EnemySpawner : MonoBehaviour
 
         RefillPlayerHealth();
         StoreAndClearBattlefieldDrops();
+        saveController?.SaveNow(RunSavePhase.PostWave);
 
         if (shopOpenDelaySeconds > 0f)
         {
             yield return new WaitForSeconds(shopOpenDelaySeconds);
+        }
+
+        if (runId == levelRunId && endRunAfterFinalWave && currentWave >= finalWave)
+        {
+            EnsureSettlementFlow();
+            settlementController?.ShowVictory();
+            yield break;
+        }
+
+        yield return ProcessPostWaveRewardsAndOpenShop(runId);
+    }
+
+    private IEnumerator ProcessPostWaveRewardsAndOpenShop(int runId)
+    {
+        if (runId == levelRunId
+            && playerExperience != null
+            && playerExperience.PendingUpgradeCount > 0)
+        {
+            EnsureLevelUpFlow();
+            levelUpRewardController.BeginRewards(playerExperience, currentWave);
+            while (runId == levelRunId
+                && levelUpRewardController != null
+                && levelUpRewardController.IsProcessing)
+            {
+                yield return null;
+            }
+        }
+
+        PlayerLootCrateInventory crateInventory = PlayerLootCrateInventory.GetOrCreate();
+        if (runId == levelRunId
+            && crateInventory != null
+            && crateInventory.PendingCrates > 0)
+        {
+            EnsureLevelUpFlow();
+            EnsureShopFlow();
+            shopFlow.AutoBind(ref shopManager, shopRoot, ref shopExitButton);
+            lootCrateRewardController.BeginRewards(crateInventory, shopManager);
+            while (runId == levelRunId
+                && lootCrateRewardController != null
+                && lootCrateRewardController.IsProcessing)
+            {
+                yield return null;
+            }
         }
 
         if (runId == levelRunId)
@@ -404,6 +491,7 @@ public sealed class EnemySpawner : MonoBehaviour
     {
         EnsureShopFlow();
         shopFlow.Open(ref shopManager, shopRoot, ref shopExitButton, refreshShopWhenOpened);
+        saveController?.SaveNow(RunSavePhase.Shop);
     }
 
     private void SetShopVisible(bool visible)
@@ -457,6 +545,21 @@ public sealed class EnemySpawner : MonoBehaviour
         Destroy(enemy.gameObject);
     }
 
+    public void EndRunCombat()
+    {
+        if (runEnded)
+        {
+            return;
+        }
+
+        runEnded = true;
+        levelRunId++;
+        StopSpawning();
+        SetShopVisible(false);
+        DestroyAliveEnemies();
+        ClearBattlefieldDrops();
+    }
+
     private void EnsureSpawnPool()
     {
         if (spawnPool != null)
@@ -494,6 +597,7 @@ public sealed class EnemySpawner : MonoBehaviour
     {
         BattlefieldDrop[] drops = FindObjectsOfType<BattlefieldDrop>(true);
         int retainedMaterialUnits = 0;
+        int uncollectedLootCrates = 0;
         foreach (BattlefieldDrop drop in drops)
         {
             if (drop == null || !drop.gameObject.scene.IsValid())
@@ -506,6 +610,10 @@ public sealed class EnemySpawner : MonoBehaviour
             {
                 retainedMaterialUnits += material.RetainedMaterialUnits;
             }
+            else if (drop is LootCratePickup)
+            {
+                uncollectedLootCrates++;
+            }
 
             drop.gameObject.SetActive(false);
             Destroy(drop.gameObject);
@@ -514,6 +622,26 @@ public sealed class EnemySpawner : MonoBehaviour
         if (retainedMaterialUnits > 0)
         {
             PlayerWallet.GetOrCreate().AddRetainedMaterials(retainedMaterialUnits);
+        }
+
+        if (uncollectedLootCrates > 0)
+        {
+            PlayerLootCrateInventory.GetOrCreate()?.AddCrates(uncollectedLootCrates);
+        }
+    }
+
+    private static void ClearBattlefieldDrops()
+    {
+        BattlefieldDrop[] drops = FindObjectsOfType<BattlefieldDrop>(true);
+        foreach (BattlefieldDrop drop in drops)
+        {
+            if (drop == null || !drop.gameObject.scene.IsValid())
+            {
+                continue;
+            }
+
+            drop.gameObject.SetActive(false);
+            Destroy(drop.gameObject);
         }
     }
 
@@ -543,8 +671,78 @@ public sealed class EnemySpawner : MonoBehaviour
     {
         if (lifetimeTracker == null)
         {
-            lifetimeTracker = new EnemyLifetimeTracker(ReleaseOrDestroyEnemy);
+            lifetimeTracker = new EnemyLifetimeTracker(ReleaseOrDestroyEnemy, HandleEnemyDied);
         }
+    }
+
+    private void HandleEnemyDied(EnemyBase enemy)
+    {
+        totalEnemiesKilled++;
+    }
+
+    private void EnsureSettlementFlow()
+    {
+        if (settlementController == null)
+        {
+            settlementController = GameRunSettlementController.GetOrCreate();
+        }
+
+        PlayerHealth playerHealth = playerTarget != null
+            ? playerTarget.GetComponentInParent<PlayerHealth>()
+            : null;
+        if (playerHealth == null && PlayerStats.Instance != null)
+        {
+            playerHealth = PlayerStats.Instance.GetComponent<PlayerHealth>();
+        }
+
+        settlementController?.Bind(this, playerHealth);
+    }
+
+    private void EnsureSaveFlow()
+    {
+        if (saveController == null)
+        {
+            saveController = RunSaveController.GetOrCreate();
+        }
+
+        saveController.Bind(this);
+    }
+
+    private IEnumerator RestoreSavedRunRoutine(RunSaveData saveData)
+    {
+        yield return null;
+
+        SetWave(saveData.wave);
+        totalEnemiesKilled = Mathf.Max(0, saveData.totalEnemiesKilled);
+        saveController.RestoreState(saveData);
+
+        if (saveData.phase == RunSavePhase.Shop)
+        {
+            OpenShop();
+            saveController.RestoreShopState(saveData.shop);
+            saveController.SetSuspended(false);
+            saveController.SaveNow(RunSavePhase.Shop);
+            yield break;
+        }
+
+        if (saveData.phase == RunSavePhase.PostWave)
+        {
+            levelRunId++;
+            int runId = levelRunId;
+            saveController.SetSuspended(false);
+            saveController.SaveNow(RunSavePhase.PostWave);
+            if (endRunAfterFinalWave && currentWave >= finalWave)
+            {
+                settlementController?.ShowVictory();
+                yield break;
+            }
+
+            yield return ProcessPostWaveRewardsAndOpenShop(runId);
+            yield break;
+        }
+
+        saveController.SetSuspended(false);
+        StartSpawning();
     }
 
     private void EnsureShopFlow()
@@ -552,6 +750,29 @@ public sealed class EnemySpawner : MonoBehaviour
         if (shopFlow == null)
         {
             shopFlow = new EnemyShopFlow(ExitShopAndStartNextLevel);
+        }
+    }
+
+    private void EnsureLevelUpFlow()
+    {
+        if (playerExperience == null)
+        {
+            playerExperience = PlayerExperience.GetOrCreate();
+        }
+
+        if (playerExperience != null)
+        {
+            PlayerExperienceHudView.GetOrCreate(playerExperience);
+        }
+
+        if (levelUpRewardController == null)
+        {
+            levelUpRewardController = LevelUpRewardController.GetOrCreate();
+        }
+
+        if (lootCrateRewardController == null)
+        {
+            lootCrateRewardController = LootCrateRewardController.GetOrCreate();
         }
     }
 

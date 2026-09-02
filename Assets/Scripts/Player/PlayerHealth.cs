@@ -189,7 +189,11 @@ public sealed class PlayerHealth : MonoBehaviour
         int oldHealth = currentHealth;
 
         cachedMaxHealth = MaxHealth;
-        currentHealth = Mathf.Clamp(currentHealth, 0, cachedMaxHealth);
+        int maxHealthIncrease = Mathf.Max(0, cachedMaxHealth - oldMaxHealth);
+        int healthAfterMaxChange = !IsDead && maxHealthIncrease > 0
+            ? currentHealth + maxHealthIncrease
+            : currentHealth;
+        currentHealth = Mathf.Clamp(healthAfterMaxChange, 0, cachedMaxHealth);
 
         if (notify && (oldMaxHealth != cachedMaxHealth || oldHealth != currentHealth))
         {

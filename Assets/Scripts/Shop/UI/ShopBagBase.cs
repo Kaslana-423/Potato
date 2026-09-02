@@ -117,6 +117,26 @@ public abstract class ShopBagBase : MonoBehaviour
         ContentsChanged?.Invoke();
     }
 
+    public void RestoreContentIds(IReadOnlyList<string> contentIds)
+    {
+        AutoBindReferences();
+        contents.Clear();
+        if (contentIds != null)
+        {
+            for (int index = 0; index < contentIds.Count; index++)
+            {
+                ShopContentDefinition content = ShopContentCatalog.FindById(contentIds[index]);
+                if (content != null && CanAdd(content, out _))
+                {
+                    contents.Add(content);
+                }
+            }
+        }
+
+        RebuildSlotViews();
+        ContentsChanged?.Invoke();
+    }
+
     protected virtual void StoreContent(ShopContentDefinition content)
     {
         detailPopup?.Hide();

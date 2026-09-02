@@ -6,10 +6,12 @@ public sealed class EnemyLifetimeTracker
 {
     private readonly List<EnemyBase> aliveEnemies = new List<EnemyBase>();
     private readonly Action<EnemyBase> releaseEnemy;
+    private readonly Action<EnemyBase> enemyDied;
 
-    public EnemyLifetimeTracker(Action<EnemyBase> releaseEnemy)
+    public EnemyLifetimeTracker(Action<EnemyBase> releaseEnemy, Action<EnemyBase> enemyDied = null)
     {
         this.releaseEnemy = releaseEnemy;
+        this.enemyDied = enemyDied;
     }
 
     public int AliveCount
@@ -70,6 +72,7 @@ public sealed class EnemyLifetimeTracker
 
         enemy.Died -= HandleEnemyDied;
         aliveEnemies.Remove(enemy);
+        enemyDied?.Invoke(enemy);
         releaseEnemy?.Invoke(enemy);
     }
 }
