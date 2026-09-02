@@ -5,6 +5,13 @@ using UnityEngine.UI;
 [DisallowMultipleComponent]
 public sealed class MainMenuFlowView : MonoBehaviour
 {
+    [Header("Title Visuals")]
+    [SerializeField] private GameObject firstImage;
+    [SerializeField] private GameObject secondImage;
+    [SerializeField] private GameObject pressStart;
+    [SerializeField] private GameObject brandArea;
+
+    [Header("Pages")]
     [SerializeField] private GameObject titlePanel;
     [SerializeField] private Button titleContinueButton;
     [SerializeField] private GameObject saveSelectPanel;
@@ -29,11 +36,42 @@ public sealed class MainMenuFlowView : MonoBehaviour
         ? saveSlotButtons[0]
         : null;
 
+    public void AutoBindSceneVisuals()
+    {
+        firstImage = firstImage != null ? firstImage : FindObject("First_Image");
+        secondImage = secondImage != null ? secondImage : FindObject("Second_Image");
+        pressStart = pressStart != null ? pressStart : FindObject("PRESS START");
+        brandArea = brandArea != null ? brandArea : FindObject("BrandArea");
+    }
+
+    public void ApplyRouteVisuals(UIRoute route)
+    {
+        if (route == UIRoute.None)
+        {
+            return;
+        }
+
+        bool showTitleVisuals = route == UIRoute.Title;
+        SetActive(firstImage, showTitleVisuals);
+        SetActive(titlePanel, showTitleVisuals);
+        SetActive(pressStart, showTitleVisuals);
+        SetActive(brandArea, showTitleVisuals);
+        SetActive(secondImage, !showTitleVisuals);
+    }
+
     public Button GetSaveSlotButton(int index)
     {
         return saveSlotButtons != null && index >= 0 && index < saveSlotButtons.Length
             ? saveSlotButtons[index]
             : null;
+    }
+
+    private static void SetActive(GameObject target, bool value)
+    {
+        if (target != null && target.activeSelf != value)
+        {
+            target.SetActive(value);
+        }
     }
 
 #if UNITY_EDITOR
@@ -45,6 +83,7 @@ public sealed class MainMenuFlowView : MonoBehaviour
             return;
         }
 
+        AutoBindSceneVisuals();
         titlePanel = titlePanel != null ? titlePanel : FindObject("TitlePanel");
         saveSelectPanel = saveSelectPanel != null ? saveSelectPanel : FindObject("SaveSelectPanel");
         characterSelectPanel = characterSelectPanel != null

@@ -51,6 +51,7 @@ public sealed class MainMenuController : MonoBehaviour
 
     private ConfirmationAction pendingConfirmation;
     private GameObject selectionBeforeConfirmation;
+    private int titleInputStartFrame;
 
     public bool HasSceneNavigationReferences => mainActionsPanel != null
         && navigationView != null
@@ -91,6 +92,25 @@ public sealed class MainMenuController : MonoBehaviour
         }
 
         UnbindActions();
+    }
+
+    private void LateUpdate()
+    {
+        if (pendingConfirmation != ConfirmationAction.None
+            || uiRouter == null
+            || uiRouter.CurrentRoute != UIRoute.Title
+            || Time.frameCount < titleInputStartFrame)
+        {
+            return;
+        }
+
+        if (Input.anyKeyDown
+            || Input.GetMouseButtonDown(0)
+            || Input.GetMouseButtonDown(1)
+            || Input.GetMouseButtonDown(2))
+        {
+            OpenSaveSelect();
+        }
     }
 
     public void Configure(
@@ -150,6 +170,7 @@ public sealed class MainMenuController : MonoBehaviour
         cancelButton = cancelButton != null ? cancelButton : FindComponent<Button>("CancelButton");
         navigationView = navigationView != null ? navigationView : GetComponent<MainMenuFlowView>();
         uiRouter = uiRouter != null ? uiRouter : GetComponent<UIRouter>();
+        navigationView?.AutoBindSceneVisuals();
     }
 
     public void StartNewGame()
@@ -484,21 +505,18 @@ public sealed class MainMenuController : MonoBehaviour
 
     private void InitializeNavigation()
     {
-        if (!uiRouter.Initialize(UIRoute.Title))
-        {
-            return;
-        }
-
-        if (SaveContext.HasCurrentSave)
-        {
-            uiRouter.Navigate(UIRoute.SaveSelect);
-            uiRouter.Navigate(UIRoute.MainMenu);
-        }
+        uiRouter.Initialize(UIRoute.Title);
     }
 
     private void HandleRouteChanged(UIRoute route)
     {
-        if (route == UIRoute.SaveSelect)
+        navigationView?.ApplyRouteVisuals(route);
+
+        if (route == UIRoute.Title)
+        {
+            titleInputStartFrame = Time.frameCount + 1;
+        }
+        else if (route == UIRoute.SaveSelect)
         {
             RefreshSaveSlots();
         }
