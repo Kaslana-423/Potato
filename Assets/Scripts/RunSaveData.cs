@@ -38,6 +38,7 @@ public sealed class RunSaveData
     public const int CurrentVersion = 1;
 
     public int version = CurrentVersion;
+    public string characterId = GameSessionState.DefaultCharacterId;
     public RunSavePhase phase = RunSavePhase.Combat;
     public int wave = 1;
     public int totalEnemiesKilled;

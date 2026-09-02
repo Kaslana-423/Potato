@@ -9,68 +9,66 @@ public sealed class GameplayPauseController : MonoBehaviour
     private const string MainMenuSceneName = "MainMenu";
 
     private EnemySpawner spawner;
-    private GameObject windowRoot;
-    private GameObject mainPanel;
-    private GameObject settingsPanel;
-    private Slider volumeSlider;
-    private TMP_Text volumeValueText;
-    private Toggle fullscreenToggle;
+    [SerializeField] private GameObject windowRoot;
+    [SerializeField] private GameObject gameplayRouteRoot;
+    [SerializeField] private GameObject mainPanel;
+    [SerializeField] private GameObject settingsPanel;
+    [SerializeField] private Button resumeButton;
+    [SerializeField] private Button settingsButton;
+    [SerializeField] private Button mainMenuButton;
+    [SerializeField] private Button settingsBackButton;
+    [SerializeField] private Slider volumeSlider;
+    [SerializeField] private TMP_Text volumeValueText;
+    [SerializeField] private Toggle fullscreenToggle;
+    [SerializeField] private UIRouter uiRouter;
+    [SerializeField] private UIScreen gameplayScreen;
+    [SerializeField] private UIScreen pauseScreen;
+    [SerializeField] private UIScreen settingsScreen;
     private float previousTimeScale = 1f;
 
     public bool IsPaused { get; private set; }
+    public bool HasSceneUiReferences => HasRequiredSceneObjects();
 
     private void Awake()
     {
-        BuildUi();
+        if (!HasRequiredSceneObjects())
+        {
+            Debug.LogError("Pause UI objects must be initialized in SampleScene.unity before entering Play Mode.", this);
+            enabled = false;
+            return;
+        }
+
+        BindActions();
+        ConfigureNavigation();
         GameSessionState.ApplySettings();
         SyncSettingsUi();
         SetWindowVisible(false);
     }
 
-    private void Update()
-    {
-        if (!Input.GetKeyDown(KeyCode.Escape))
-        {
-            return;
-        }
-
-        if (IsPaused)
-        {
-            if (settingsPanel != null && settingsPanel.activeSelf)
-            {
-                CloseSettings();
-            }
-            else
-            {
-                ResumeGame();
-            }
-
-            return;
-        }
-
-        if (CanPause())
-        {
-            PauseGame();
-        }
-    }
-
     private void OnDisable()
     {
-        RestoreTimeScale();
+        ExitPauseState();
     }
 
     private void OnDestroy()
     {
-        RestoreTimeScale();
+        if (uiRouter != null)
+        {
+            uiRouter.RouteChanged -= HandleRouteChanged;
+            uiRouter.SetBackInterceptor(null);
+        }
+
+        UnbindActions();
+        ExitPauseState();
     }
 
-    public static GameplayPauseController GetOrCreate(EnemySpawner enemySpawner)
+    public static GameplayPauseController FindSceneController(EnemySpawner enemySpawner)
     {
         GameplayPauseController existing = FindObjectOfType<GameplayPauseController>(true);
         if (existing == null)
         {
-            GameObject controllerObject = new GameObject("GameplayPauseController");
-            existing = controllerObject.AddComponent<GameplayPauseController>();
+            Debug.LogError("SampleScene is missing its GameplayPauseController scene object.");
+            return null;
         }
 
         existing.spawner = enemySpawner;
@@ -86,9 +84,13 @@ public sealed class GameplayPauseController : MonoBehaviour
 
         previousTimeScale = Time.timeScale > 0f ? Time.timeScale : 1f;
         IsPaused = true;
-        ShowMainPanel();
         SetWindowVisible(true);
         Time.timeScale = 0f;
+
+        if (uiRouter == null || !uiRouter.Navigate(UIRoute.Pause))
+        {
+            ShowMainPanel();
+        }
     }
 
     public void ResumeGame()
@@ -98,8 +100,20 @@ public sealed class GameplayPauseController : MonoBehaviour
             return;
         }
 
-        SetWindowVisible(false);
-        RestoreTimeScale();
+        if (uiRouter != null && uiRouter.CurrentRoute != UIRoute.Gameplay)
+        {
+            if (uiRouter.CurrentRoute == UIRoute.Pause && uiRouter.Back())
+            {
+                return;
+            }
+
+            if (uiRouter.Initialize(UIRoute.Gameplay))
+            {
+                return;
+            }
+        }
+
+        ExitPauseState();
     }
 
     private bool CanPause()
@@ -113,11 +127,15 @@ public sealed class GameplayPauseController : MonoBehaviour
     private void OpenSettings()
     {
         SyncSettingsUi();
+        if (uiRouter != null && uiRouter.Navigate(UIRoute.Settings))
+        {
+            return;
+        }
+
         if (mainPanel != null)
         {
             mainPanel.SetActive(false);
         }
-
         if (settingsPanel != null)
         {
             settingsPanel.SetActive(true);
@@ -126,6 +144,11 @@ public sealed class GameplayPauseController : MonoBehaviour
 
     private void CloseSettings()
     {
+        if (uiRouter != null && uiRouter.CurrentRoute == UIRoute.Settings && uiRouter.Back())
+        {
+            return;
+        }
+
         ShowMainPanel();
     }
 
@@ -144,7 +167,7 @@ public sealed class GameplayPauseController : MonoBehaviour
 
     private void ReturnToMainMenu()
     {
-        ResumeGame();
+        ExitPauseState();
         if (!Application.CanStreamedLevelBeLoaded(MainMenuSceneName))
         {
             Debug.LogError($"Main menu scene is not in Build Settings: {MainMenuSceneName}", this);
@@ -199,6 +222,130 @@ public sealed class GameplayPauseController : MonoBehaviour
         Time.timeScale = previousTimeScale > 0f ? previousTimeScale : 1f;
     }
 
+    private void ExitPauseState()
+    {
+        SetWindowVisible(false);
+        RestoreTimeScale();
+    }
+
+    private void ConfigureNavigation()
+    {
+        gameplayScreen.Configure(UIRoute.Gameplay, gameplayRouteRoot, null);
+        pauseScreen.Configure(UIRoute.Pause, mainPanel, resumeButton);
+        settingsScreen.Configure(UIRoute.Settings, settingsPanel, volumeSlider);
+
+        uiRouter.Register(gameplayScreen);
+        uiRouter.Register(pauseScreen);
+        uiRouter.Register(settingsScreen);
+        uiRouter.SetBackInterceptor(HandleBackRequest);
+        uiRouter.RouteChanged += HandleRouteChanged;
+        uiRouter.Initialize(UIRoute.Gameplay);
+    }
+
+#if UNITY_EDITOR
+    public void BuildSceneUi()
+    {
+        if (Application.isPlaying)
+        {
+            Debug.LogError("Pause UI scene objects cannot be created during Play Mode.", this);
+            return;
+        }
+
+        if (windowRoot == null)
+        {
+            BuildUi();
+        }
+
+        if (gameplayRouteRoot == null)
+        {
+            gameplayRouteRoot = new GameObject("GameplayRoute", typeof(RectTransform));
+            gameplayRouteRoot.transform.SetParent(transform, false);
+        }
+
+        uiRouter = uiRouter != null ? uiRouter : GetComponent<UIRouter>();
+        if (uiRouter == null)
+        {
+            uiRouter = gameObject.AddComponent<UIRouter>();
+        }
+
+        gameplayScreen = gameplayScreen != null
+            ? gameplayScreen
+            : GetOrAddScreen(gameplayRouteRoot);
+        pauseScreen = pauseScreen != null ? pauseScreen : GetOrAddScreen(mainPanel);
+        settingsScreen = settingsScreen != null ? settingsScreen : GetOrAddScreen(settingsPanel);
+        gameplayScreen.Configure(UIRoute.Gameplay, gameplayRouteRoot, null);
+        pauseScreen.Configure(UIRoute.Pause, mainPanel, resumeButton);
+        settingsScreen.Configure(UIRoute.Settings, settingsPanel, volumeSlider);
+        SetWindowVisible(false);
+    }
+#endif
+
+    private bool HasRequiredSceneObjects()
+    {
+        return windowRoot != null
+            && gameplayRouteRoot != null
+            && mainPanel != null
+            && settingsPanel != null
+            && resumeButton != null
+            && settingsButton != null
+            && mainMenuButton != null
+            && settingsBackButton != null
+            && volumeSlider != null
+            && volumeValueText != null
+            && fullscreenToggle != null
+            && uiRouter != null
+            && gameplayScreen != null
+            && pauseScreen != null
+            && settingsScreen != null;
+    }
+
+#if UNITY_EDITOR
+    private static UIScreen GetOrAddScreen(GameObject root)
+    {
+        UIScreen screen = root.GetComponent<UIScreen>();
+        return screen != null ? screen : root.AddComponent<UIScreen>();
+    }
+#endif
+
+    private void BindActions()
+    {
+        resumeButton.onClick.AddListener(ResumeGame);
+        settingsButton.onClick.AddListener(OpenSettings);
+        mainMenuButton.onClick.AddListener(ReturnToMainMenu);
+        settingsBackButton.onClick.AddListener(CloseSettings);
+        volumeSlider.onValueChanged.AddListener(HandleVolumeChanged);
+        fullscreenToggle.onValueChanged.AddListener(HandleFullscreenChanged);
+    }
+
+    private void UnbindActions()
+    {
+        resumeButton?.onClick.RemoveListener(ResumeGame);
+        settingsButton?.onClick.RemoveListener(OpenSettings);
+        mainMenuButton?.onClick.RemoveListener(ReturnToMainMenu);
+        settingsBackButton?.onClick.RemoveListener(CloseSettings);
+        volumeSlider?.onValueChanged.RemoveListener(HandleVolumeChanged);
+        fullscreenToggle?.onValueChanged.RemoveListener(HandleFullscreenChanged);
+    }
+
+    private bool HandleBackRequest()
+    {
+        if (IsPaused || !CanPause())
+        {
+            return false;
+        }
+
+        PauseGame();
+        return true;
+    }
+
+    private void HandleRouteChanged(UIRoute route)
+    {
+        if (route == UIRoute.Gameplay)
+        {
+            ExitPauseState();
+        }
+    }
+
     private void SetWindowVisible(bool visible)
     {
         if (windowRoot != null && windowRoot.activeSelf != visible)
@@ -207,6 +354,7 @@ public sealed class GameplayPauseController : MonoBehaviour
         }
     }
 
+#if UNITY_EDITOR
     private void BuildUi()
     {
         TMP_FontAsset font = Resources.Load<TMP_FontAsset>(FontResourcePath);
@@ -238,33 +386,30 @@ public sealed class GameplayPauseController : MonoBehaviour
         title.text = "游戏暂停";
         title.alignment = TextAlignmentOptions.Center;
 
-        CreateButton(
+        resumeButton = CreateButton(
             "ResumeButton",
             mainPanel.transform,
             font,
             "继续游戏",
             new Vector2(0.13f, 0.56f),
             new Vector2(0.87f, 0.69f),
-            new Color(0.22f, 0.58f, 0.3f, 1f),
-            ResumeGame);
-        CreateButton(
+            new Color(0.22f, 0.58f, 0.3f, 1f));
+        settingsButton = CreateButton(
             "SettingsButton",
             mainPanel.transform,
             font,
             "设置",
             new Vector2(0.13f, 0.37f),
             new Vector2(0.87f, 0.5f),
-            new Color(0.23f, 0.27f, 0.35f, 1f),
-            OpenSettings);
-        CreateButton(
+            new Color(0.23f, 0.27f, 0.35f, 1f));
+        mainMenuButton = CreateButton(
             "MainMenuButton",
             mainPanel.transform,
             font,
             "返回主菜单",
             new Vector2(0.13f, 0.18f),
             new Vector2(0.87f, 0.31f),
-            new Color(0.32f, 0.25f, 0.25f, 1f),
-            ReturnToMainMenu);
+            new Color(0.32f, 0.25f, 0.25f, 1f));
 
         TMP_Text hint = CreateText("Hint", mainPanel.transform, font, 19f, FontStyles.Normal);
         SetRect(hint.rectTransform, new Vector2(0.08f, 0.04f), new Vector2(0.92f, 0.12f));
@@ -291,7 +436,6 @@ public sealed class GameplayPauseController : MonoBehaviour
 
         volumeSlider = CreateSlider("VolumeSlider", settingsPanel.transform);
         SetRect(volumeSlider.GetComponent<RectTransform>(), new Vector2(0.39f, 0.64f), new Vector2(0.76f, 0.71f));
-        volumeSlider.onValueChanged.AddListener(HandleVolumeChanged);
 
         volumeValueText = CreateText("VolumeValue", settingsPanel.transform, font, 24f, FontStyles.Bold);
         SetRect(volumeValueText.rectTransform, new Vector2(0.77f, 0.63f), new Vector2(0.89f, 0.72f));
@@ -299,17 +443,15 @@ public sealed class GameplayPauseController : MonoBehaviour
 
         fullscreenToggle = CreateToggle("FullscreenToggle", settingsPanel.transform, font, "全屏");
         SetRect(fullscreenToggle.GetComponent<RectTransform>(), new Vector2(0.18f, 0.43f), new Vector2(0.82f, 0.55f));
-        fullscreenToggle.onValueChanged.AddListener(HandleFullscreenChanged);
 
-        CreateButton(
+        settingsBackButton = CreateButton(
             "SettingsBackButton",
             settingsPanel.transform,
             font,
             "返回",
             new Vector2(0.18f, 0.16f),
             new Vector2(0.82f, 0.29f),
-            new Color(0.23f, 0.27f, 0.35f, 1f),
-            CloseSettings);
+            new Color(0.23f, 0.27f, 0.35f, 1f));
 
         settingsPanel.SetActive(false);
     }
@@ -330,8 +472,7 @@ public sealed class GameplayPauseController : MonoBehaviour
         string label,
         Vector2 anchorMin,
         Vector2 anchorMax,
-        Color color,
-        UnityEngine.Events.UnityAction action)
+        Color color)
     {
         GameObject buttonObject = CreateUiObject(objectName, parent);
         SetRect(buttonObject.GetComponent<RectTransform>(), anchorMin, anchorMax);
@@ -339,7 +480,6 @@ public sealed class GameplayPauseController : MonoBehaviour
         image.color = color;
         Button button = buttonObject.AddComponent<Button>();
         button.targetGraphic = image;
-        button.onClick.AddListener(action);
 
         TMP_Text text = CreateText("Text", buttonObject.transform, font, 28f, FontStyles.Bold);
         Stretch(text.rectTransform);
@@ -458,4 +598,5 @@ public sealed class GameplayPauseController : MonoBehaviour
         rect.anchoredPosition = Vector2.zero;
         rect.sizeDelta = size;
     }
+#endif
 }

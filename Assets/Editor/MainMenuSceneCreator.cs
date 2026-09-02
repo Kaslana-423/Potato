@@ -113,6 +113,25 @@ public static class MainMenuSceneCreator
         SettingsReferences settings = CreateSettingsPanel(controllerObject.transform);
         ConfirmationReferences confirmation = CreateConfirmationPanel(controllerObject.transform);
 
+        MainMenuFlowView navigationView = controllerObject.AddComponent<MainMenuFlowView>();
+        TMP_FontAsset navigationFont = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(ChineseFontPath);
+        navigationView.EnsurePages(actions.panel, navigationFont);
+        UIRouter router = controllerObject.AddComponent<UIRouter>();
+        UIScreen titleScreen = ConfigureScreen(
+            navigationView.TitlePanel,
+            UIRoute.Title,
+            navigationView.TitleContinueButton);
+        UIScreen saveSelectScreen = ConfigureScreen(
+            navigationView.SaveSelectPanel,
+            UIRoute.SaveSelect,
+            navigationView.FirstSaveSlotButton);
+        UIScreen mainMenuScreen = ConfigureScreen(actions.panel, UIRoute.MainMenu, actions.start);
+        UIScreen characterSelectScreen = ConfigureScreen(
+            navigationView.CharacterSelectPanel,
+            UIRoute.CharacterSelect,
+            navigationView.DefaultCharacterButton);
+        UIScreen settingsScreen = ConfigureScreen(settings.panel, UIRoute.Settings, settings.volume);
+
         MainMenuController controller = controllerObject.AddComponent<MainMenuController>();
         controller.Configure(
             actions.start,
@@ -130,6 +149,15 @@ public static class MainMenuSceneCreator
             confirmation.message,
             confirmation.confirm,
             confirmation.cancel);
+        controller.ConfigureNavigationReferences(
+            actions.panel,
+            navigationView,
+            router,
+            titleScreen,
+            saveSelectScreen,
+            mainMenuScreen,
+            characterSelectScreen,
+            settingsScreen);
 
         settings.panel.SetActive(false);
         confirmation.panel.SetActive(false);
@@ -258,7 +286,7 @@ public static class MainMenuSceneCreator
         Button settings = CreateMenuButton("SettingsButton", panelObject.transform, "设置", PanelLight, Color.white);
         Button exit = CreateMenuButton("ExitGameButton", panelObject.transform, "退出游戏", new Color(0.11f, 0.1f, 0.12f, 1f), Muted);
 
-        return new MainActions(start, continueGame, abandon, settings, exit, status);
+        return new MainActions(panelObject, start, continueGame, abandon, settings, exit, status);
     }
 
     private static SettingsReferences CreateSettingsPanel(Transform parent)
@@ -378,6 +406,13 @@ public static class MainMenuSceneCreator
 
         canvasObject.AddComponent<GraphicRaycaster>();
         return canvas;
+    }
+
+    private static UIScreen ConfigureScreen(GameObject root, UIRoute route, Selectable initialSelection)
+    {
+        UIScreen screen = root.AddComponent<UIScreen>();
+        screen.Configure(route, root, initialSelection);
+        return screen;
     }
 
     private static void CreateCamera()
@@ -691,6 +726,7 @@ public static class MainMenuSceneCreator
     private readonly struct MainActions
     {
         public MainActions(
+            GameObject panel,
             Button start,
             Button continueGame,
             Button abandon,
@@ -698,6 +734,7 @@ public static class MainMenuSceneCreator
             Button exit,
             TMP_Text sessionStatus)
         {
+            this.panel = panel;
             this.start = start;
             this.continueGame = continueGame;
             this.abandon = abandon;
@@ -706,6 +743,7 @@ public static class MainMenuSceneCreator
             this.sessionStatus = sessionStatus;
         }
 
+        public readonly GameObject panel;
         public readonly Button start;
         public readonly Button continueGame;
         public readonly Button abandon;

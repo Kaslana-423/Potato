@@ -5,6 +5,8 @@ using UnityEngine;
 
 public static class GameSessionState
 {
+    public const string DefaultCharacterId = "character.potato";
+
     private const string LegacyActiveRunKey = "potato.session.active";
     private const string LegacyRunDataKey = "potato.session.run_data";
     private const string MasterVolumeKey = "potato.settings.master_volume";
@@ -13,17 +15,32 @@ public static class GameSessionState
     private const string RunSaveBackupFileName = "run_save.backup.json";
     private const string RunSaveTemporaryFileName = "run_save.tmp";
 
-    public static string RunSavePath => Path.Combine(Application.persistentDataPath, RunSaveFileName);
-    public static string RunSaveBackupPath => Path.Combine(Application.persistentDataPath, RunSaveBackupFileName);
-    private static string RunSaveTemporaryPath => Path.Combine(Application.persistentDataPath, RunSaveTemporaryFileName);
+    private static string ActiveSaveDirectory => SaveContext.HasCurrentSave
+        ? SaveContext.CurrentSaveDirectory
+        : Application.persistentDataPath;
+    private static string LegacyRunSavePath => Path.Combine(Application.persistentDataPath, RunSaveFileName);
+    private static string LegacyRunSaveBackupPath => Path.Combine(Application.persistentDataPath, RunSaveBackupFileName);
+    private static string LegacyRunSaveTemporaryPath => Path.Combine(Application.persistentDataPath, RunSaveTemporaryFileName);
+
+    public static string RunSavePath => Path.Combine(ActiveSaveDirectory, RunSaveFileName);
+    public static string RunSaveBackupPath => Path.Combine(ActiveSaveDirectory, RunSaveBackupFileName);
+    private static string RunSaveTemporaryPath => Path.Combine(ActiveSaveDirectory, RunSaveTemporaryFileName);
 
     public static bool HasActiveRun => HasValidFileSave()
+        || TryMigrateLegacyFileSave(out _)
         || TryReadLegacySave(out _);
     public static float MasterVolume => Mathf.Clamp01(PlayerPrefs.GetFloat(MasterVolumeKey, 1f));
     public static bool Fullscreen => PlayerPrefs.GetInt(FullscreenKey, Screen.fullScreen ? 1 : 0) == 1;
+    public static string CurrentCharacterId { get; private set; } = DefaultCharacterId;
 
     public static void BeginNewRun()
     {
+        BeginNewRun(CurrentCharacterId);
+    }
+
+    public static void BeginNewRun(string characterId)
+    {
+        CurrentCharacterId = NormalizeCharacterId(characterId);
         DeleteRunSaveFiles();
         DeleteLegacyRunSave();
     }
@@ -42,10 +59,11 @@ public static class GameSessionState
         }
 
         saveData.version = RunSaveData.CurrentVersion;
+        saveData.characterId = NormalizeCharacterId(saveData.characterId);
         string json = JsonUtility.ToJson(saveData, true);
         try
         {
-            Directory.CreateDirectory(Application.persistentDataPath);
+            Directory.CreateDirectory(ActiveSaveDirectory);
             File.WriteAllText(RunSaveTemporaryPath, json, new UTF8Encoding(false));
 
             if (File.Exists(RunSavePath))
@@ -69,6 +87,7 @@ public static class GameSessionState
     {
         if (TryReadSaveFile(RunSavePath, out saveData))
         {
+            CurrentCharacterId = NormalizeCharacterId(saveData.characterId);
             return true;
         }
 
@@ -77,12 +96,20 @@ public static class GameSessionState
         {
             TryDeleteFile(RunSavePath);
             SaveRun(saveData);
+            CurrentCharacterId = NormalizeCharacterId(saveData.characterId);
+            return true;
+        }
+
+        if (TryMigrateLegacyFileSave(out saveData))
+        {
+            CurrentCharacterId = NormalizeCharacterId(saveData.characterId);
             return true;
         }
 
         if (TryReadLegacySave(out saveData))
         {
             SaveRun(saveData);
+            CurrentCharacterId = NormalizeCharacterId(saveData.characterId);
             return true;
         }
 
@@ -138,6 +165,36 @@ public static class GameSessionState
         return TryParseSaveJson(PlayerPrefs.GetString(LegacyRunDataKey, string.Empty), out saveData);
     }
 
+    private static bool TryMigrateLegacyFileSave(out RunSaveData saveData)
+    {
+        saveData = null;
+        if (!SaveContext.HasCurrentSave
+            || string.Equals(RunSavePath, LegacyRunSavePath, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (!TryReadSaveFile(LegacyRunSavePath, out saveData)
+            && !TryReadSaveFile(LegacyRunSaveBackupPath, out saveData)
+            && !TryReadSaveFile(LegacyRunSaveTemporaryPath, out saveData))
+        {
+            saveData = null;
+            return false;
+        }
+
+        SaveRun(saveData);
+        if (!TryReadSaveFile(RunSavePath, out saveData))
+        {
+            saveData = null;
+            return false;
+        }
+
+        TryDeleteFile(LegacyRunSavePath);
+        TryDeleteFile(LegacyRunSaveBackupPath);
+        TryDeleteFile(LegacyRunSaveTemporaryPath);
+        return true;
+    }
+
     private static bool TryParseSaveJson(string json, out RunSaveData saveData)
     {
         saveData = null;
@@ -156,6 +213,11 @@ public static class GameSessionState
             saveData = null;
             return false;
         }
+    }
+
+    private static string NormalizeCharacterId(string characterId)
+    {
+        return string.IsNullOrWhiteSpace(characterId) ? DefaultCharacterId : characterId;
     }
 
     private static void ReplaceRunSaveFile()

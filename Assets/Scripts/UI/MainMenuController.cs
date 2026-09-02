@@ -1,5 +1,7 @@
+using System;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
@@ -8,6 +10,7 @@ public sealed class MainMenuController : MonoBehaviour
     private enum ConfirmationAction
     {
         None,
+        StartNewRun,
         AbandonRun,
         ExitGame
     }
@@ -16,6 +19,7 @@ public sealed class MainMenuController : MonoBehaviour
     [SerializeField] private string gameplaySceneName = "SampleScene";
 
     [Header("Main Actions")]
+    [SerializeField] private GameObject mainActionsPanel;
     [SerializeField] private Button startButton;
     [SerializeField] private Button continueButton;
     [SerializeField] private Button abandonButton;
@@ -36,37 +40,56 @@ public sealed class MainMenuController : MonoBehaviour
     [SerializeField] private Button confirmButton;
     [SerializeField] private Button cancelButton;
 
+    [Header("Navigation")]
+    [SerializeField] private MainMenuFlowView navigationView;
+    [SerializeField] private UIRouter uiRouter;
+    [SerializeField] private UIScreen titleScreen;
+    [SerializeField] private UIScreen saveSelectScreen;
+    [SerializeField] private UIScreen mainMenuScreen;
+    [SerializeField] private UIScreen characterSelectScreen;
+    [SerializeField] private UIScreen settingsScreen;
+
     private ConfirmationAction pendingConfirmation;
+    private GameObject selectionBeforeConfirmation;
+
+    public bool HasSceneNavigationReferences => mainActionsPanel != null
+        && navigationView != null
+        && uiRouter != null
+        && titleScreen != null
+        && saveSelectScreen != null
+        && mainMenuScreen != null
+        && characterSelectScreen != null
+        && settingsScreen != null;
 
     private void Awake()
     {
         AutoBindReferences();
+        ConfigureNavigation();
         BindActions();
         GameSessionState.ApplySettings();
         SyncSettingsUi();
-        CloseOverlays();
+        RefreshSaveSlots();
         RefreshSessionState();
-    }
+        CancelConfirmation();
 
-    private void Update()
-    {
-        if (!Input.GetKeyDown(KeyCode.Escape))
+        if (uiRouter != null)
         {
-            return;
+            InitializeNavigation();
         }
-
-        if (confirmationPanel != null && confirmationPanel.activeSelf)
+        else
         {
-            CancelConfirmation();
-        }
-        else if (settingsPanel != null && settingsPanel.activeSelf)
-        {
-            CloseSettings();
+            CloseOverlays();
         }
     }
 
     private void OnDestroy()
     {
+        if (uiRouter != null)
+        {
+            uiRouter.RouteChanged -= HandleRouteChanged;
+            uiRouter.SetBackInterceptor(null);
+        }
+
         UnbindActions();
     }
 
@@ -107,6 +130,7 @@ public sealed class MainMenuController : MonoBehaviour
     [ContextMenu("Auto Bind References")]
     public void AutoBindReferences()
     {
+        mainActionsPanel = mainActionsPanel != null ? mainActionsPanel : FindObject("MainActionsPanel");
         startButton = startButton != null ? startButton : FindComponent<Button>("StartGameButton");
         continueButton = continueButton != null ? continueButton : FindComponent<Button>("ContinueGameButton");
         abandonButton = abandonButton != null ? abandonButton : FindComponent<Button>("AbandonRunButton");
@@ -124,12 +148,22 @@ public sealed class MainMenuController : MonoBehaviour
         confirmationText = confirmationText != null ? confirmationText : FindComponent<TMP_Text>("ConfirmationText");
         confirmButton = confirmButton != null ? confirmButton : FindComponent<Button>("ConfirmButton");
         cancelButton = cancelButton != null ? cancelButton : FindComponent<Button>("CancelButton");
+        navigationView = navigationView != null ? navigationView : GetComponent<MainMenuFlowView>();
+        uiRouter = uiRouter != null ? uiRouter : GetComponent<UIRouter>();
     }
 
     public void StartNewGame()
     {
-        GameSessionState.BeginNewRun();
-        LoadGameplayScene();
+        if (GameSessionState.HasActiveRun)
+        {
+            OpenConfirmation(
+                ConfirmationAction.StartNewRun,
+                "当前游戏尚未结束。\n开始新游戏会放弃当前进度。",
+                "放弃并开始新游戏");
+            return;
+        }
+
+        OpenCharacterSelect();
     }
 
     public void ContinueGame()
@@ -159,14 +193,57 @@ public sealed class MainMenuController : MonoBehaviour
 
     public void OpenSettings()
     {
+        if (uiRouter != null && uiRouter.Navigate(UIRoute.Settings))
+        {
+            return;
+        }
+
         if (settingsPanel != null)
         {
             settingsPanel.SetActive(true);
         }
     }
 
+    public void OpenSaveSelect()
+    {
+        uiRouter?.Navigate(UIRoute.SaveSelect);
+    }
+
+    public void CloseSaveSelect()
+    {
+        if (uiRouter != null && uiRouter.CurrentRoute == UIRoute.SaveSelect)
+        {
+            uiRouter.Back();
+        }
+    }
+
+    public void OpenCharacterSelect()
+    {
+        navigationView?.ShowDefaultCharacterSelected();
+        uiRouter?.Navigate(UIRoute.CharacterSelect);
+    }
+
+    public void CloseCharacterSelect()
+    {
+        if (uiRouter != null && uiRouter.CurrentRoute == UIRoute.CharacterSelect)
+        {
+            uiRouter.Back();
+        }
+    }
+
+    public void StartSelectedCharacter()
+    {
+        GameSessionState.BeginNewRun(GameSessionState.DefaultCharacterId);
+        LoadGameplayScene();
+    }
+
     public void CloseSettings()
     {
+        if (uiRouter != null && uiRouter.CurrentRoute == UIRoute.Settings && uiRouter.Back())
+        {
+            return;
+        }
+
         if (settingsPanel != null)
         {
             settingsPanel.SetActive(false);
@@ -185,6 +262,11 @@ public sealed class MainMenuController : MonoBehaviour
 
         switch (action)
         {
+            case ConfirmationAction.StartNewRun:
+                GameSessionState.AbandonRun();
+                RefreshSessionState();
+                OpenCharacterSelect();
+                break;
             case ConfirmationAction.AbandonRun:
                 GameSessionState.AbandonRun();
                 RefreshSessionState();
@@ -197,15 +279,26 @@ public sealed class MainMenuController : MonoBehaviour
 
     public void CancelConfirmation()
     {
+        bool wasOpen = confirmationPanel != null && confirmationPanel.activeSelf;
         pendingConfirmation = ConfirmationAction.None;
         if (confirmationPanel != null)
         {
             confirmationPanel.SetActive(false);
         }
+
+        if (wasOpen && selectionBeforeConfirmation != null && selectionBeforeConfirmation.activeInHierarchy)
+        {
+            EventSystem.current?.SetSelectedGameObject(selectionBeforeConfirmation);
+        }
+
+        selectionBeforeConfirmation = null;
     }
 
     private void OpenConfirmation(ConfirmationAction action, string message, string confirmLabel)
     {
+        selectionBeforeConfirmation = EventSystem.current != null
+            ? EventSystem.current.currentSelectedGameObject
+            : null;
         pendingConfirmation = action;
         if (confirmationText != null)
         {
@@ -223,6 +316,7 @@ public sealed class MainMenuController : MonoBehaviour
         if (confirmationPanel != null)
         {
             confirmationPanel.SetActive(true);
+            cancelButton?.Select();
         }
     }
 
@@ -247,12 +341,30 @@ public sealed class MainMenuController : MonoBehaviour
         bool hasActiveRun = GameSessionState.HasActiveRun;
         if (continueButton != null)
         {
+            continueButton.gameObject.SetActive(hasActiveRun);
             continueButton.interactable = hasActiveRun;
         }
 
         if (abandonButton != null)
         {
+            abandonButton.gameObject.SetActive(hasActiveRun);
             abandonButton.interactable = hasActiveRun;
+        }
+
+        TMP_Text startLabel = startButton != null
+            ? startButton.GetComponentInChildren<TMP_Text>(true)
+            : null;
+        if (startLabel != null)
+        {
+            startLabel.text = hasActiveRun ? "新游戏" : "开始游戏";
+        }
+
+        if (mainMenuScreen != null && mainActionsPanel != null)
+        {
+            mainMenuScreen.Configure(
+                UIRoute.MainMenu,
+                mainActionsPanel,
+                hasActiveRun ? continueButton : startButton);
         }
 
         if (sessionStatusText != null)
@@ -260,6 +372,11 @@ public sealed class MainMenuController : MonoBehaviour
             sessionStatusText.text = hasActiveRun
                 ? "检测到进行中的游戏"
                 : "当前没有进行中的游戏";
+        }
+
+        if (!hasActiveRun && uiRouter != null && uiRouter.CurrentRoute == UIRoute.MainMenu)
+        {
+            startButton?.Select();
         }
     }
 
@@ -303,8 +420,192 @@ public sealed class MainMenuController : MonoBehaviour
         CancelConfirmation();
     }
 
+    public void ConfigureNavigationReferences(
+        GameObject newMainActionsPanel,
+        MainMenuFlowView newNavigationView,
+        UIRouter newUiRouter,
+        UIScreen newTitleScreen,
+        UIScreen newSaveSelectScreen,
+        UIScreen newMainMenuScreen,
+        UIScreen newCharacterSelectScreen,
+        UIScreen newSettingsScreen)
+    {
+        mainActionsPanel = newMainActionsPanel;
+        navigationView = newNavigationView;
+        uiRouter = newUiRouter;
+        titleScreen = newTitleScreen;
+        saveSelectScreen = newSaveSelectScreen;
+        mainMenuScreen = newMainMenuScreen;
+        characterSelectScreen = newCharacterSelectScreen;
+        settingsScreen = newSettingsScreen;
+    }
+
+    private void ConfigureNavigation()
+    {
+        if (mainActionsPanel == null
+            || settingsPanel == null
+            || navigationView == null
+            || navigationView.TitlePanel == null
+            || navigationView.SaveSelectPanel == null
+            || navigationView.CharacterSelectPanel == null)
+        {
+            Debug.LogWarning("Main menu navigation is missing one or more required pages.", this);
+            return;
+        }
+
+        if (uiRouter == null
+            || titleScreen == null
+            || saveSelectScreen == null
+            || mainMenuScreen == null
+            || characterSelectScreen == null
+            || settingsScreen == null)
+        {
+            Debug.LogError("Main menu navigation components must be initialized in MainMenu.unity.", this);
+            return;
+        }
+
+        titleScreen.Configure(UIRoute.Title, navigationView.TitlePanel, navigationView.TitleContinueButton);
+        saveSelectScreen.Configure(UIRoute.SaveSelect, navigationView.SaveSelectPanel, navigationView.FirstSaveSlotButton);
+        mainMenuScreen.Configure(UIRoute.MainMenu, mainActionsPanel, startButton);
+        characterSelectScreen.Configure(
+            UIRoute.CharacterSelect,
+            navigationView.CharacterSelectPanel,
+            navigationView.DefaultCharacterButton);
+        settingsScreen.Configure(UIRoute.Settings, settingsPanel, volumeSlider);
+        uiRouter.Register(titleScreen);
+        uiRouter.Register(saveSelectScreen);
+        uiRouter.Register(mainMenuScreen);
+        uiRouter.Register(characterSelectScreen);
+        uiRouter.Register(settingsScreen);
+        uiRouter.SetBackInterceptor(HandleBackRequest);
+        uiRouter.RouteChanged -= HandleRouteChanged;
+        uiRouter.RouteChanged += HandleRouteChanged;
+    }
+
+    private void InitializeNavigation()
+    {
+        if (!uiRouter.Initialize(UIRoute.Title))
+        {
+            return;
+        }
+
+        if (SaveContext.HasCurrentSave)
+        {
+            uiRouter.Navigate(UIRoute.SaveSelect);
+            uiRouter.Navigate(UIRoute.MainMenu);
+        }
+    }
+
+    private void HandleRouteChanged(UIRoute route)
+    {
+        if (route == UIRoute.SaveSelect)
+        {
+            RefreshSaveSlots();
+        }
+        else if (route == UIRoute.MainMenu)
+        {
+            RefreshSessionState();
+        }
+        else if (route == UIRoute.CharacterSelect)
+        {
+            navigationView?.ShowDefaultCharacterSelected();
+        }
+    }
+
+    private bool HandleBackRequest()
+    {
+        if (confirmationPanel == null || !confirmationPanel.activeSelf)
+        {
+            return false;
+        }
+
+        CancelConfirmation();
+        return true;
+    }
+
+    private void SelectSaveSlot1()
+    {
+        SelectSaveSlot(1);
+    }
+
+    private void SelectDefaultCharacter()
+    {
+        navigationView?.ShowDefaultCharacterSelected();
+    }
+
+    private void SelectSaveSlot2()
+    {
+        SelectSaveSlot(2);
+    }
+
+    private void SelectSaveSlot3()
+    {
+        SelectSaveSlot(3);
+    }
+
+    private void SelectSaveSlot(int slotId)
+    {
+        if (!SaveContext.SelectOrCreateSave(slotId))
+        {
+            navigationView?.SetSaveSelectStatus($"无法读取存档 {slotId}，原文件未被覆盖。", true);
+            RefreshSaveSlots(false);
+            return;
+        }
+
+        RefreshSaveSlots();
+        RefreshSessionState();
+        uiRouter?.Navigate(UIRoute.MainMenu);
+    }
+
+    private void RefreshSaveSlots(bool resetStatus = true)
+    {
+        if (navigationView == null)
+        {
+            return;
+        }
+
+        for (int index = 0; index < SaveContext.SlotCount; index++)
+        {
+            int slotId = index + 1;
+            SaveSlotInfo slot = SaveContext.GetSlotInfo(slotId);
+            string state;
+            if (!slot.Exists)
+            {
+                state = "新存档";
+            }
+            else if (!slot.IsValid)
+            {
+                state = "存档损坏";
+            }
+            else if (DateTime.TryParse(slot.LastPlayedAtUtc, out DateTime lastPlayed))
+            {
+                state = lastPlayed.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
+            }
+            else
+            {
+                state = "已有存档";
+            }
+
+            string currentMark = SaveContext.CurrentSlotId == slotId ? "  [当前]" : string.Empty;
+            navigationView.SetSaveSlotLabel(index, $"{slot.DisplayName}{currentMark}\n{state}");
+        }
+
+        if (resetStatus)
+        {
+            navigationView.SetSaveSelectStatus("选择已有存档，或创建一个新存档", false);
+        }
+    }
+
     private void BindActions()
     {
+        AddListener(navigationView != null ? navigationView.TitleContinueButton : null, OpenSaveSelect);
+        AddListener(navigationView != null ? navigationView.GetSaveSlotButton(0) : null, SelectSaveSlot1);
+        AddListener(navigationView != null ? navigationView.GetSaveSlotButton(1) : null, SelectSaveSlot2);
+        AddListener(navigationView != null ? navigationView.GetSaveSlotButton(2) : null, SelectSaveSlot3);
+        AddListener(navigationView != null ? navigationView.SaveSelectBackButton : null, CloseSaveSelect);
+        AddListener(navigationView != null ? navigationView.DefaultCharacterButton : null, SelectDefaultCharacter);
+        AddListener(navigationView != null ? navigationView.CharacterStartButton : null, StartSelectedCharacter);
+        AddListener(navigationView != null ? navigationView.CharacterBackButton : null, CloseCharacterSelect);
         AddListener(startButton, StartNewGame);
         AddListener(continueButton, ContinueGame);
         AddListener(abandonButton, RequestAbandonRun);
@@ -319,6 +620,14 @@ public sealed class MainMenuController : MonoBehaviour
 
     private void UnbindActions()
     {
+        RemoveListener(navigationView != null ? navigationView.TitleContinueButton : null, OpenSaveSelect);
+        RemoveListener(navigationView != null ? navigationView.GetSaveSlotButton(0) : null, SelectSaveSlot1);
+        RemoveListener(navigationView != null ? navigationView.GetSaveSlotButton(1) : null, SelectSaveSlot2);
+        RemoveListener(navigationView != null ? navigationView.GetSaveSlotButton(2) : null, SelectSaveSlot3);
+        RemoveListener(navigationView != null ? navigationView.SaveSelectBackButton : null, CloseSaveSelect);
+        RemoveListener(navigationView != null ? navigationView.DefaultCharacterButton : null, SelectDefaultCharacter);
+        RemoveListener(navigationView != null ? navigationView.CharacterStartButton : null, StartSelectedCharacter);
+        RemoveListener(navigationView != null ? navigationView.CharacterBackButton : null, CloseCharacterSelect);
         RemoveListener(startButton, StartNewGame);
         RemoveListener(continueButton, ContinueGame);
         RemoveListener(abandonButton, RequestAbandonRun);

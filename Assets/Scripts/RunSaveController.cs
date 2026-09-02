@@ -95,6 +95,7 @@ public sealed class RunSaveController : MonoBehaviour
         ResolveReferences();
         var saveData = new RunSaveData
         {
+            characterId = GameSessionState.CurrentCharacterId,
             phase = phase,
             wave = spawner.CurrentWave,
             totalEnemiesKilled = spawner.TotalEnemiesKilled,

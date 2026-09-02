@@ -138,7 +138,7 @@ public sealed class EnemySpawner : MonoBehaviour
 
         EnsureSettlementFlow();
         EnsureSaveFlow();
-        GameplayPauseController.GetOrCreate(this);
+        GameplayPauseController.FindSceneController(this);
 
         if (GameSessionState.TryLoadRun(out RunSaveData saveData))
         {
