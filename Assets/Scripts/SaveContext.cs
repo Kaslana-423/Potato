@@ -95,6 +95,37 @@ public static class SaveContext
         CurrentSaveChanged?.Invoke();
     }
 
+    public static bool DeleteSave(int slotId)
+    {
+        if (!IsValidSlot(slotId))
+        {
+            Debug.LogError($"Invalid save slot: {slotId}");
+            return false;
+        }
+
+        string directory = GetSlotDirectory(slotId);
+        try
+        {
+            if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, true);
+            }
+
+            if (CurrentSlotId == slotId)
+            {
+                CurrentSave = null;
+                CurrentSaveChanged?.Invoke();
+            }
+
+            return true;
+        }
+        catch (Exception exception)
+        {
+            Debug.LogError($"Save slot {slotId} could not be deleted at '{directory}': {exception.Message}");
+            return false;
+        }
+    }
+
     public static string GetSlotDirectory(int slotId)
     {
         if (!IsValidSlot(slotId))

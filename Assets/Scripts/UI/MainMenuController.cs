@@ -52,6 +52,11 @@ public sealed class MainMenuController : MonoBehaviour
     private ConfirmationAction pendingConfirmation;
     private GameObject selectionBeforeConfirmation;
     private int titleInputStartFrame;
+    private int selectedSaveSlotIndex;
+    private bool deleteSaveFocused;
+    private bool deleteMode;
+    private bool hasLastMousePosition;
+    private Vector3 lastMousePosition;
 
     public bool HasSceneNavigationReferences => mainActionsPanel != null
         && navigationView != null
@@ -96,20 +101,38 @@ public sealed class MainMenuController : MonoBehaviour
 
     private void LateUpdate()
     {
-        if (pendingConfirmation != ConfirmationAction.None
-            || uiRouter == null
-            || uiRouter.CurrentRoute != UIRoute.Title
-            || Time.frameCount < titleInputStartFrame)
+        if (pendingConfirmation != ConfirmationAction.None)
+        {
+            if (Input.GetKeyDown(KeyCode.Space))
+            {
+                ConfirmPendingAction();
+            }
+
+            return;
+        }
+
+        if (uiRouter == null)
         {
             return;
         }
 
-        if (Input.anyKeyDown
-            || Input.GetMouseButtonDown(0)
-            || Input.GetMouseButtonDown(1)
-            || Input.GetMouseButtonDown(2))
+        if (uiRouter.CurrentRoute == UIRoute.Title)
         {
-            OpenSaveSelect();
+            if (Time.frameCount >= titleInputStartFrame
+                && (Input.anyKeyDown
+                    || Input.GetMouseButtonDown(0)
+                    || Input.GetMouseButtonDown(1)
+                    || Input.GetMouseButtonDown(2)))
+            {
+                OpenSaveSelect();
+            }
+
+            return;
+        }
+
+        if (uiRouter.CurrentRoute == UIRoute.SaveSelect)
+        {
+            HandleSaveSelectInput();
         }
     }
 
@@ -518,7 +541,7 @@ public sealed class MainMenuController : MonoBehaviour
         }
         else if (route == UIRoute.SaveSelect)
         {
-            RefreshSaveSlots();
+            InitializeSaveSelect();
         }
         else if (route == UIRoute.MainMenu)
         {
@@ -532,6 +555,12 @@ public sealed class MainMenuController : MonoBehaviour
 
     private bool HandleBackRequest()
     {
+        if (uiRouter != null && uiRouter.CurrentRoute == UIRoute.SaveSelect && deleteMode)
+        {
+            ExitDeleteMode();
+            return true;
+        }
+
         if (confirmationPanel == null || !confirmationPanel.activeSelf)
         {
             return false;
@@ -543,7 +572,7 @@ public sealed class MainMenuController : MonoBehaviour
 
     private void SelectSaveSlot1()
     {
-        SelectSaveSlot(1);
+        SelectSaveSlotFromMouse(0);
     }
 
     private void SelectDefaultCharacter()
@@ -553,12 +582,194 @@ public sealed class MainMenuController : MonoBehaviour
 
     private void SelectSaveSlot2()
     {
-        SelectSaveSlot(2);
+        SelectSaveSlotFromMouse(1);
     }
 
     private void SelectSaveSlot3()
     {
-        SelectSaveSlot(3);
+        SelectSaveSlotFromMouse(2);
+    }
+
+    private void HandleSaveSelectInput()
+    {
+        UpdateSaveFocusFromMouse();
+
+        if (deleteMode && Input.GetMouseButtonDown(1))
+        {
+            ExitDeleteMode();
+            return;
+        }
+
+        if (Input.GetKeyDown(KeyCode.A) || Input.GetKeyDown(KeyCode.LeftArrow))
+        {
+            MoveSaveSlotSelection(-1);
+        }
+        else if (Input.GetKeyDown(KeyCode.D) || Input.GetKeyDown(KeyCode.RightArrow))
+        {
+            MoveSaveSlotSelection(1);
+        }
+
+        if (!deleteMode && Input.GetKeyDown(KeyCode.W))
+        {
+            deleteSaveFocused = false;
+            ApplySaveSelectFocus();
+        }
+        else if (!deleteMode && Input.GetKeyDown(KeyCode.S))
+        {
+            deleteSaveFocused = true;
+            ApplySaveSelectFocus();
+        }
+
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            if (deleteMode)
+            {
+                DeleteSelectedSaveImmediately();
+            }
+            else if (deleteSaveFocused)
+            {
+                EnterDeleteMode();
+            }
+            else
+            {
+                ConfirmSelectedSave();
+            }
+        }
+    }
+
+    private void UpdateSaveFocusFromMouse()
+    {
+        Vector3 mousePosition = Input.mousePosition;
+        if (hasLastMousePosition && (mousePosition - lastMousePosition).sqrMagnitude < 0.01f)
+        {
+            return;
+        }
+
+        hasLastMousePosition = true;
+        lastMousePosition = mousePosition;
+        if (navigationView == null
+            || !navigationView.TryGetHoveredSaveControl(mousePosition, out int slotIndex, out bool deleteHovered))
+        {
+            return;
+        }
+
+        if (slotIndex >= 0)
+        {
+            selectedSaveSlotIndex = slotIndex;
+            if (!deleteMode)
+            {
+                deleteSaveFocused = false;
+            }
+        }
+        else if (deleteHovered && !deleteMode)
+        {
+            deleteSaveFocused = true;
+        }
+
+        ApplySaveSelectFocus();
+    }
+
+    private void MoveSaveSlotSelection(int direction)
+    {
+        selectedSaveSlotIndex = (selectedSaveSlotIndex + direction + SaveContext.SlotCount)
+            % SaveContext.SlotCount;
+        if (!deleteMode)
+        {
+            deleteSaveFocused = false;
+        }
+
+        ApplySaveSelectFocus();
+    }
+
+    private void SelectSaveSlotFromMouse(int index)
+    {
+        selectedSaveSlotIndex = Mathf.Clamp(index, 0, SaveContext.SlotCount - 1);
+        deleteSaveFocused = false;
+        ApplySaveSelectFocus();
+        if (deleteMode)
+        {
+            DeleteSelectedSaveImmediately();
+        }
+        else
+        {
+            ConfirmSelectedSave();
+        }
+    }
+
+    private void ConfirmSelectedSave()
+    {
+        if (deleteMode)
+        {
+            DeleteSelectedSaveImmediately();
+        }
+        else
+        {
+            SelectSaveSlot(selectedSaveSlotIndex + 1);
+        }
+    }
+
+    private void ToggleDeleteMode()
+    {
+        if (deleteMode)
+        {
+            ExitDeleteMode();
+            return;
+        }
+
+        deleteSaveFocused = true;
+        EnterDeleteMode();
+    }
+
+    private void EnterDeleteMode()
+    {
+        deleteMode = true;
+        deleteSaveFocused = false;
+        ApplySaveSelectFocus();
+    }
+
+    private void ExitDeleteMode()
+    {
+        deleteMode = false;
+        deleteSaveFocused = false;
+        ApplySaveSelectFocus();
+    }
+
+    private void DeleteSelectedSaveImmediately()
+    {
+        int slotId = selectedSaveSlotIndex + 1;
+        SaveSlotInfo slot = SaveContext.GetSlotInfo(slotId);
+        if (!slot.Exists)
+        {
+            navigationView?.SetSaveSelectStatus($"存档 {slotId} 为空，无需删除。", true);
+            ApplySaveSelectFocus();
+            return;
+        }
+
+        DeleteSaveSlot(slotId);
+    }
+
+    private void DeleteSaveSlot(int slotId)
+    {
+        if (slotId < 1 || slotId > SaveContext.SlotCount)
+        {
+            return;
+        }
+
+        if (SaveContext.CurrentSlotId == slotId)
+        {
+            GameSessionState.AbandonRun();
+        }
+
+        if (!SaveContext.DeleteSave(slotId))
+        {
+            navigationView?.SetSaveSelectStatus($"无法删除存档 {slotId}。", true);
+            RefreshSaveSlots(false);
+            return;
+        }
+
+        RefreshSaveSlots(false);
+        RefreshSessionState();
+        navigationView?.SetSaveSelectStatus($"已删除存档 {slotId}。", false);
     }
 
     private void SelectSaveSlot(int slotId)
@@ -575,6 +786,29 @@ public sealed class MainMenuController : MonoBehaviour
         uiRouter?.Navigate(UIRoute.MainMenu);
     }
 
+    private void InitializeSaveSelect()
+    {
+        selectedSaveSlotIndex = SaveContext.CurrentSlotId > 0
+            ? SaveContext.CurrentSlotId - 1
+            : 0;
+        selectedSaveSlotIndex = Mathf.Clamp(selectedSaveSlotIndex, 0, SaveContext.SlotCount - 1);
+        deleteSaveFocused = false;
+        deleteMode = false;
+        hasLastMousePosition = true;
+        lastMousePosition = Input.mousePosition;
+        RefreshSaveSlots();
+    }
+
+    private void ApplySaveSelectFocus()
+    {
+        if (navigationView == null)
+        {
+            return;
+        }
+
+        navigationView.SetSaveSelection(selectedSaveSlotIndex, deleteSaveFocused, deleteMode);
+    }
+
     private void RefreshSaveSlots(bool resetStatus = true)
     {
         if (navigationView == null)
@@ -586,27 +820,10 @@ public sealed class MainMenuController : MonoBehaviour
         {
             int slotId = index + 1;
             SaveSlotInfo slot = SaveContext.GetSlotInfo(slotId);
-            string state;
-            if (!slot.Exists)
-            {
-                state = "新存档";
-            }
-            else if (!slot.IsValid)
-            {
-                state = "存档损坏";
-            }
-            else if (DateTime.TryParse(slot.LastPlayedAtUtc, out DateTime lastPlayed))
-            {
-                state = lastPlayed.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
-            }
-            else
-            {
-                state = "已有存档";
-            }
-
-            string currentMark = SaveContext.CurrentSlotId == slotId ? "  [当前]" : string.Empty;
-            navigationView.SetSaveSlotLabel(index, $"{slot.DisplayName}{currentMark}\n{state}");
+            navigationView.SetSaveSlotPresentation(index, slot);
         }
+
+        ApplySaveSelectFocus();
 
         if (resetStatus)
         {
@@ -620,6 +837,8 @@ public sealed class MainMenuController : MonoBehaviour
         AddListener(navigationView != null ? navigationView.GetSaveSlotButton(0) : null, SelectSaveSlot1);
         AddListener(navigationView != null ? navigationView.GetSaveSlotButton(1) : null, SelectSaveSlot2);
         AddListener(navigationView != null ? navigationView.GetSaveSlotButton(2) : null, SelectSaveSlot3);
+        AddListener(navigationView != null ? navigationView.SaveSelectConfirmButton : null, ConfirmSelectedSave);
+        AddListener(navigationView != null ? navigationView.DeleteFileButton : null, ToggleDeleteMode);
         AddListener(navigationView != null ? navigationView.SaveSelectBackButton : null, CloseSaveSelect);
         AddListener(navigationView != null ? navigationView.DefaultCharacterButton : null, SelectDefaultCharacter);
         AddListener(navigationView != null ? navigationView.CharacterStartButton : null, StartSelectedCharacter);
@@ -642,6 +861,8 @@ public sealed class MainMenuController : MonoBehaviour
         RemoveListener(navigationView != null ? navigationView.GetSaveSlotButton(0) : null, SelectSaveSlot1);
         RemoveListener(navigationView != null ? navigationView.GetSaveSlotButton(1) : null, SelectSaveSlot2);
         RemoveListener(navigationView != null ? navigationView.GetSaveSlotButton(2) : null, SelectSaveSlot3);
+        RemoveListener(navigationView != null ? navigationView.SaveSelectConfirmButton : null, ConfirmSelectedSave);
+        RemoveListener(navigationView != null ? navigationView.DeleteFileButton : null, ToggleDeleteMode);
         RemoveListener(navigationView != null ? navigationView.SaveSelectBackButton : null, CloseSaveSelect);
         RemoveListener(navigationView != null ? navigationView.DefaultCharacterButton : null, SelectDefaultCharacter);
         RemoveListener(navigationView != null ? navigationView.CharacterStartButton : null, StartSelectedCharacter);

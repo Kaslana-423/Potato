@@ -17,6 +17,11 @@ public sealed class MainMenuFlowView : MonoBehaviour
     [SerializeField] private GameObject saveSelectPanel;
     [SerializeField] private TMP_Text saveSelectStatusText;
     [SerializeField] private Button[] saveSlotButtons;
+    [SerializeField] private GameObject deleteFileRoot;
+    [SerializeField] private GameObject deleteSelectedVisual;
+    [SerializeField] private GameObject deleteModeVisual;
+    [SerializeField] private Button deleteFileButton;
+    [SerializeField] private Button saveSelectConfirmButton;
     [SerializeField] private Button saveSelectBackButton;
     [SerializeField] private GameObject characterSelectPanel;
     [SerializeField] private TMP_Text characterSelectionStatusText;
@@ -27,6 +32,8 @@ public sealed class MainMenuFlowView : MonoBehaviour
     public GameObject TitlePanel => titlePanel;
     public Button TitleContinueButton => titleContinueButton;
     public GameObject SaveSelectPanel => saveSelectPanel;
+    public Button DeleteFileButton => deleteFileButton;
+    public Button SaveSelectConfirmButton => saveSelectConfirmButton;
     public Button SaveSelectBackButton => saveSelectBackButton;
     public GameObject CharacterSelectPanel => characterSelectPanel;
     public Button DefaultCharacterButton => defaultCharacterButton;
@@ -42,6 +49,34 @@ public sealed class MainMenuFlowView : MonoBehaviour
         secondImage = secondImage != null ? secondImage : FindObject("Second_Image");
         pressStart = pressStart != null ? pressStart : FindObject("PRESS START");
         brandArea = brandArea != null ? brandArea : FindObject("BrandArea");
+        saveSelectPanel = saveSelectPanel != null ? saveSelectPanel : FindObject("SaveSelectPanel");
+        deleteFileRoot = deleteFileRoot != null ? deleteFileRoot : FindObject("DeleteFileButton");
+        deleteSelectedVisual = deleteSelectedVisual != null
+            ? deleteSelectedVisual
+            : FindDescendant(deleteFileRoot != null ? deleteFileRoot.transform : null, "SELECTED")?.gameObject;
+        deleteModeVisual = deleteModeVisual != null
+            ? deleteModeVisual
+            : FindDescendant(deleteFileRoot != null ? deleteFileRoot.transform : null, "DeleteMode")?.gameObject;
+        deleteFileButton = deleteFileButton != null ? deleteFileButton : FindButton("DeleteFileButton");
+        saveSelectConfirmButton = saveSelectConfirmButton != null
+            ? saveSelectConfirmButton
+            : FindButton("SelectButton");
+        saveSelectBackButton = saveSelectBackButton != null
+            ? saveSelectBackButton
+            : FindButton("BackButton", "SaveSelectBackButton");
+
+        if (saveSlotButtons == null || saveSlotButtons.Length != SaveContext.SlotCount)
+        {
+            saveSlotButtons = new Button[SaveContext.SlotCount];
+        }
+
+        for (int index = 0; index < saveSlotButtons.Length; index++)
+        {
+            if (saveSlotButtons[index] == null)
+            {
+                saveSlotButtons[index] = FindButton($"SaveSlot{index + 1}Button");
+            }
+        }
     }
 
     public void ApplyRouteVisuals(UIRoute route)
@@ -66,12 +101,106 @@ public sealed class MainMenuFlowView : MonoBehaviour
             : null;
     }
 
+    public void SetSaveSlotPresentation(int index, SaveSlotInfo slot)
+    {
+        Button button = GetSaveSlotButton(index);
+        if (button == null)
+        {
+            return;
+        }
+
+        SetActive(FindDescendant(button.transform, "FileImage")?.gameObject, slot.Exists);
+        SetActive(FindDescendant(button.transform, "NoFileImage")?.gameObject, !slot.Exists);
+    }
+
+    public void SetSaveSelection(int selectedIndex, bool deleteFocused, bool deleteMode)
+    {
+        for (int index = 0; index < SaveContext.SlotCount; index++)
+        {
+            Button button = GetSaveSlotButton(index);
+            if (button == null)
+            {
+                continue;
+            }
+
+            bool selected = (deleteMode || !deleteFocused) && index == selectedIndex;
+            SetActive(FindDescendant(button.transform, "Selected")?.gameObject, selected);
+            SetActive(FindDescendant(button.transform, "Unselected")?.gameObject, !selected);
+        }
+
+        if (deleteFileButton != null)
+        {
+            deleteFileButton.interactable = true;
+        }
+
+        SetActive(deleteSelectedVisual, deleteFocused);
+        SetActive(deleteModeVisual, deleteMode);
+
+        Button focusedButton = deleteFocused && !deleteMode
+            ? deleteFileButton
+            : GetSaveSlotButton(selectedIndex);
+        focusedButton?.Select();
+    }
+
+    public bool TryGetHoveredSaveControl(Vector2 screenPosition, out int slotIndex, out bool deleteHovered)
+    {
+        slotIndex = -1;
+        deleteHovered = false;
+        Camera eventCamera = GetEventCamera();
+
+        for (int index = 0; index < SaveContext.SlotCount; index++)
+        {
+            Button button = GetSaveSlotButton(index);
+            if (button != null
+                && button.gameObject.activeInHierarchy
+                && RectTransformUtility.RectangleContainsScreenPoint(button.transform as RectTransform, screenPosition, eventCamera))
+            {
+                slotIndex = index;
+                return true;
+            }
+        }
+
+        RectTransform deleteButtonRect = deleteFileButton != null
+            ? deleteFileButton.transform as RectTransform
+            : null;
+        RectTransform deleteRootRect = deleteFileRoot != null
+            ? deleteFileRoot.transform as RectTransform
+            : null;
+        bool hoveringDeleteButton = deleteButtonRect != null
+            && deleteButtonRect.gameObject.activeInHierarchy
+            && RectTransformUtility.RectangleContainsScreenPoint(
+                deleteButtonRect,
+                screenPosition,
+                eventCamera);
+        bool hoveringDeleteRoot = deleteRootRect != null
+            && deleteRootRect.gameObject.activeInHierarchy
+            && RectTransformUtility.RectangleContainsScreenPoint(
+                deleteRootRect,
+                screenPosition,
+                eventCamera);
+        if (hoveringDeleteButton || hoveringDeleteRoot)
+        {
+            deleteHovered = true;
+            return true;
+        }
+
+        return false;
+    }
+
     private static void SetActive(GameObject target, bool value)
     {
         if (target != null && target.activeSelf != value)
         {
             target.SetActive(value);
         }
+    }
+
+    private Camera GetEventCamera()
+    {
+        Canvas canvas = saveSelectPanel != null ? saveSelectPanel.GetComponentInParent<Canvas>() : null;
+        return canvas == null || canvas.renderMode == RenderMode.ScreenSpaceOverlay
+            ? null
+            : canvas.worldCamera;
     }
 
 #if UNITY_EDITOR
@@ -398,24 +527,58 @@ public sealed class MainMenuFlowView : MonoBehaviour
         spacer.transform.SetParent(parent, false);
         spacer.GetComponent<LayoutElement>().preferredHeight = height;
     }
+#endif
 
-    private GameObject FindObject(string objectName)
+    private GameObject FindObject(params string[] objectNames)
     {
-        Transform child = FindTransform(objectName);
+        Transform child = FindTransform(objectNames);
         return child != null ? child.gameObject : null;
     }
 
-    private T FindComponent<T>(string objectName) where T : Component
+    private T FindComponent<T>(params string[] objectNames) where T : Component
     {
-        Transform child = FindTransform(objectName);
+        Transform child = FindTransform(objectNames);
         return child != null ? child.GetComponent<T>() : null;
     }
 
-    private Transform FindTransform(string objectName)
+    private Button FindButton(params string[] objectNames)
+    {
+        Transform child = FindTransform(objectNames);
+        if (child == null)
+        {
+            return null;
+        }
+
+        Button button = child.GetComponent<Button>();
+        return button != null ? button : child.GetComponentInChildren<Button>(true);
+    }
+
+    private Transform FindTransform(params string[] objectNames)
     {
         foreach (Transform child in GetComponentsInChildren<Transform>(true))
         {
-            if (child.name == objectName)
+            foreach (string objectName in objectNames)
+            {
+                if (child.name == objectName)
+                {
+                    return child;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private static Transform FindDescendant(Transform parent, string objectName)
+    {
+        if (parent == null)
+        {
+            return null;
+        }
+
+        foreach (Transform child in parent.GetComponentsInChildren<Transform>(true))
+        {
+            if (child != parent && child.name == objectName)
             {
                 return child;
             }
@@ -423,7 +586,6 @@ public sealed class MainMenuFlowView : MonoBehaviour
 
         return null;
     }
-#endif
 
     private static readonly Color AccentColor = new Color(0.52f, 0.88f, 0.36f, 1f);
     private static readonly Color DarkColor = new Color(0.025f, 0.035f, 0.055f, 1f);
