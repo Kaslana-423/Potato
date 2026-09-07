@@ -129,7 +129,7 @@ public static class MainMenuSceneCreator
         UIScreen characterSelectScreen = ConfigureScreen(
             navigationView.CharacterSelectPanel,
             UIRoute.CharacterSelect,
-            navigationView.DefaultCharacterButton);
+            navigationView.CharacterStartButton);
         UIScreen settingsScreen = ConfigureScreen(settings.panel, UIRoute.Settings, settings.volume);
 
         MainMenuController controller = controllerObject.AddComponent<MainMenuController>();

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -25,9 +26,23 @@ public sealed class MainMenuFlowView : MonoBehaviour
     [SerializeField] private Button saveSelectBackButton;
     [SerializeField] private GameObject characterSelectPanel;
     [SerializeField] private TMP_Text characterSelectionStatusText;
-    [SerializeField] private Button defaultCharacterButton;
     [SerializeField] private Button characterStartButton;
     [SerializeField] private Button characterBackButton;
+
+    [Header("Character Selection")]
+    [SerializeField] private Image characterPortraitImage;
+    [SerializeField] private TMP_Text characterNameText;
+    [SerializeField] private TMP_Text characterTypeText;
+    [SerializeField] private TMP_Text characterWeaponText;
+    [SerializeField] private TMP_Text characterDescriptionText;
+    [SerializeField] private Button characterPreviousButton;
+    [SerializeField] private Button characterNextButton;
+    [SerializeField] private Image[] characterPageDots;
+    [SerializeField] private Sprite selectedCharacterPageDotSprite;
+    [SerializeField] private Sprite unselectedCharacterPageDotSprite;
+    [SerializeField, Min(0f)] private float characterPageDotSpacing = 38f;
+
+    private Sprite fallbackCharacterPortraitSprite;
 
     public GameObject TitlePanel => titlePanel;
     public Button TitleContinueButton => titleContinueButton;
@@ -36,9 +51,11 @@ public sealed class MainMenuFlowView : MonoBehaviour
     public Button SaveSelectConfirmButton => saveSelectConfirmButton;
     public Button SaveSelectBackButton => saveSelectBackButton;
     public GameObject CharacterSelectPanel => characterSelectPanel;
-    public Button DefaultCharacterButton => defaultCharacterButton;
     public Button CharacterStartButton => characterStartButton;
     public Button CharacterBackButton => characterBackButton;
+    public Button CharacterPreviousButton => characterPreviousButton;
+    public Button CharacterNextButton => characterNextButton;
+    public int CharacterCount => CharacterCatalog.All.Count;
     public Button FirstSaveSlotButton => saveSlotButtons != null && saveSlotButtons.Length > 0
         ? saveSlotButtons[0]
         : null;
@@ -64,6 +81,49 @@ public sealed class MainMenuFlowView : MonoBehaviour
         saveSelectBackButton = saveSelectBackButton != null
             ? saveSelectBackButton
             : FindButton("BackButton", "SaveSelectBackButton");
+        characterSelectPanel = characterSelectPanel != null
+            ? characterSelectPanel
+            : FindObject("CharacterSelectPanel");
+        characterSelectionStatusText = characterSelectionStatusText != null
+            ? characterSelectionStatusText
+            : FindComponent<TMP_Text>("CharacterSelectionStatusText");
+        characterStartButton = characterStartButton != null
+            ? characterStartButton
+            : FindButton("CharacterStartButton");
+        characterBackButton = characterBackButton != null
+            ? characterBackButton
+            : FindButton("CharacterBackButton");
+        Image namedCharacterImage = FindDescendant(
+            characterSelectPanel != null ? characterSelectPanel.transform : null,
+            "Character")?.GetComponent<Image>();
+        if (namedCharacterImage != null)
+        {
+            characterPortraitImage = namedCharacterImage;
+        }
+        if (characterPortraitImage != null && fallbackCharacterPortraitSprite == null)
+        {
+            fallbackCharacterPortraitSprite = characterPortraitImage.sprite;
+        }
+        characterNameText = characterNameText != null
+            ? characterNameText
+            : FindComponent<TMP_Text>("CharacterNameText");
+        characterTypeText = characterTypeText != null
+            ? characterTypeText
+            : FindComponent<TMP_Text>("CharacterTypeText");
+        characterWeaponText = characterWeaponText != null
+            ? characterWeaponText
+            : FindComponent<TMP_Text>("CharacterWeaponText");
+        characterDescriptionText = characterDescriptionText != null
+            ? characterDescriptionText
+            : FindComponent<TMP_Text>("CharacterDescriptionText");
+        characterPreviousButton = characterPreviousButton != null
+            ? characterPreviousButton
+            : FindButton("CharacterPreviousButton");
+        characterNextButton = characterNextButton != null
+            ? characterNextButton
+            : FindButton("CharacterNextButton");
+        BindCharacterPageDots();
+        BindCharacterPageDotSprites();
 
         if (saveSlotButtons == null || saveSlotButtons.Length != SaveContext.SlotCount)
         {
@@ -246,9 +306,6 @@ public sealed class MainMenuFlowView : MonoBehaviour
         characterSelectionStatusText = characterSelectionStatusText != null
             ? characterSelectionStatusText
             : FindComponent<TMP_Text>("CharacterSelectionStatusText");
-        defaultCharacterButton = defaultCharacterButton != null
-            ? defaultCharacterButton
-            : FindComponent<Button>("DefaultCharacterButton");
         characterStartButton = characterStartButton != null
             ? characterStartButton
             : FindComponent<Button>("CharacterStartButton");
@@ -275,16 +332,6 @@ public sealed class MainMenuFlowView : MonoBehaviour
     }
 #endif
 
-    public void SetSaveSlotLabel(int index, string value)
-    {
-        Button button = GetSaveSlotButton(index);
-        TMP_Text label = button != null ? button.GetComponentInChildren<TMP_Text>(true) : null;
-        if (label != null)
-        {
-            label.text = value;
-        }
-    }
-
     public void SetSaveSelectStatus(string value, bool isError)
     {
         if (saveSelectStatusText == null)
@@ -298,12 +345,173 @@ public sealed class MainMenuFlowView : MonoBehaviour
             : new Color(0.63f, 0.69f, 0.76f, 1f);
     }
 
-    public void ShowDefaultCharacterSelected()
+    public CharacterDefinition ShowCharacterSelected(int index)
     {
+        IReadOnlyList<CharacterDefinition> characters = CharacterCatalog.All;
+        if (characters.Count == 0)
+        {
+            SetText(characterNameText, "未配置角色");
+            SetText(characterTypeText, "待配置");
+            SetText(characterWeaponText, "初始武器：未配置");
+            SetText(characterDescriptionText, "请在 Resources/Characters 中创建角色定义。");
+            SetCharacterPortrait(null);
+            SetCharacterPageDots(0, 0);
+            SetCharacterNavigationState(0, false);
+            return null;
+        }
+
+        int normalizedIndex = (index % characters.Count + characters.Count) % characters.Count;
+        CharacterDefinition character = characters[normalizedIndex];
+        SetText(characterNameText, character.DisplayName);
+        SetText(characterTypeText, character.TypeLabel);
+        SetText(characterWeaponText, $"初始武器：{ResolveStartingWeaponName(character)}");
+        SetText(characterDescriptionText, character.Description);
+        SetCharacterPortrait(character.Portrait);
+        SetCharacterPageDots(characters.Count, normalizedIndex);
+        SetCharacterNavigationState(characters.Count, character.Unlocked);
+
         if (characterSelectionStatusText != null)
         {
-            characterSelectionStatusText.text = "已选择：土豆　·　初始武器：木棍";
-            characterSelectionStatusText.color = AccentColor;
+            characterSelectionStatusText.text = character.Unlocked ? string.Empty : "角色尚未解锁";
+            characterSelectionStatusText.color = character.Unlocked ? AccentColor : MutedColor;
+        }
+
+        return character;
+    }
+
+    public CharacterDefinition GetCharacter(int index)
+    {
+        IReadOnlyList<CharacterDefinition> characters = CharacterCatalog.All;
+        return index >= 0 && index < characters.Count ? characters[index] : null;
+    }
+
+    private void BindCharacterPageDots()
+    {
+        if (characterPageDots != null && characterPageDots.Length > 0)
+        {
+            return;
+        }
+
+        var dots = new List<Image>();
+        for (int index = 1; ; index++)
+        {
+            Image dot = FindComponent<Image>($"CharacterPageDot{index}");
+            if (dot == null)
+            {
+                break;
+            }
+
+            dots.Add(dot);
+        }
+
+        characterPageDots = dots.ToArray();
+    }
+
+    private void BindCharacterPageDotSprites()
+    {
+        if (selectedCharacterPageDotSprite == null
+            && characterPageDots != null
+            && characterPageDots.Length > 0
+            && characterPageDots[0] != null)
+        {
+            selectedCharacterPageDotSprite = characterPageDots[0].sprite;
+        }
+
+        if (unselectedCharacterPageDotSprite == null)
+        {
+            unselectedCharacterPageDotSprite = Resources.Load<Sprite>("UI/big_roundframe");
+        }
+
+        if (unselectedCharacterPageDotSprite == null
+            && characterPageDots != null
+            && characterPageDots.Length > 1
+            && characterPageDots[1] != null)
+        {
+            unselectedCharacterPageDotSprite = characterPageDots[1].sprite;
+        }
+    }
+
+    private void SetCharacterPageDots(int characterCount, int selectedIndex)
+    {
+        BindCharacterPageDots();
+        BindCharacterPageDotSprites();
+        int availableDotCount = characterPageDots != null ? characterPageDots.Length : 0;
+        int visibleDotCount = Mathf.Min(characterCount, availableDotCount);
+        float firstX = -0.5f * (visibleDotCount - 1) * characterPageDotSpacing;
+
+        for (int index = 0; index < availableDotCount; index++)
+        {
+            Image dot = characterPageDots[index];
+            if (dot == null)
+            {
+                continue;
+            }
+
+            bool visible = index < visibleDotCount;
+            SetActive(dot.gameObject, visible);
+            if (!visible)
+            {
+                continue;
+            }
+
+            dot.sprite = index == selectedIndex
+                ? selectedCharacterPageDotSprite
+                : unselectedCharacterPageDotSprite;
+
+            RectTransform dotRect = dot.rectTransform;
+            dotRect.anchorMin = new Vector2(0.5f, 0.263f);
+            dotRect.anchorMax = dotRect.anchorMin;
+            dotRect.pivot = new Vector2(0.5f, 0.5f);
+            dotRect.sizeDelta = new Vector2(20f, 20f);
+            dotRect.anchoredPosition = new Vector2(firstX + index * characterPageDotSpacing, 0f);
+        }
+    }
+
+    private void SetCharacterNavigationState(int characterCount, bool selectedCharacterUnlocked)
+    {
+        bool canChangeCharacter = characterCount > 1;
+        if (characterPreviousButton != null)
+        {
+            characterPreviousButton.interactable = canChangeCharacter;
+        }
+
+        if (characterNextButton != null)
+        {
+            characterNextButton.interactable = canChangeCharacter;
+        }
+
+        if (characterStartButton != null)
+        {
+            characterStartButton.interactable = characterCount > 0 && selectedCharacterUnlocked;
+        }
+    }
+
+    private void SetCharacterPortrait(Sprite portrait)
+    {
+        if (characterPortraitImage == null)
+        {
+            return;
+        }
+
+        characterPortraitImage.sprite = portrait != null ? portrait : fallbackCharacterPortraitSprite;
+    }
+
+    private static string ResolveStartingWeaponName(CharacterDefinition character)
+    {
+        if (!string.IsNullOrWhiteSpace(character.StartingWeaponDisplayName))
+        {
+            return character.StartingWeaponDisplayName;
+        }
+
+        ShopContentDefinition content = ShopContentCatalog.FindById(character.StartingWeaponId);
+        return content != null ? content.LocalizedDisplayName : character.StartingWeaponId;
+    }
+
+    private static void SetText(TMP_Text target, string value)
+    {
+        if (target != null)
+        {
+            target.text = value ?? string.Empty;
         }
     }
 
@@ -373,14 +581,7 @@ public sealed class MainMenuFlowView : MonoBehaviour
             50f,
             MutedColor,
             font);
-        defaultCharacterButton = CreateButton(
-            "DefaultCharacterButton",
-            characterSelectPanel.transform,
-            "土豆\n均衡的初始角色　·　木棍",
-            PanelLightColor,
-            Color.white,
-            font,
-            130f);
+        characterPortraitImage = CreateLayoutImage("Character", characterSelectPanel.transform, 130f);
         CreateLayoutText(
             "CharacterDescriptionText",
             characterSelectPanel.transform,
@@ -406,7 +607,7 @@ public sealed class MainMenuFlowView : MonoBehaviour
             Color.white,
             font,
             68f);
-        ShowDefaultCharacterSelected();
+        ShowCharacterSelected(0);
     }
 
     private GameObject CreatePage(string objectName, GameObject templatePanel)
@@ -483,6 +684,20 @@ public sealed class MainMenuFlowView : MonoBehaviour
         }
 
         return text;
+    }
+
+    private static Image CreateLayoutImage(string objectName, Transform parent, float preferredHeight)
+    {
+        GameObject imageObject = new GameObject(objectName, typeof(RectTransform), typeof(LayoutElement), typeof(Image));
+        imageObject.layer = parent.gameObject.layer;
+        imageObject.transform.SetParent(parent, false);
+        imageObject.GetComponent<LayoutElement>().preferredHeight = preferredHeight;
+
+        Image image = imageObject.GetComponent<Image>();
+        image.color = Color.white;
+        image.preserveAspect = true;
+        image.raycastTarget = false;
+        return image;
     }
 
     private static Button CreateButton(

@@ -144,6 +144,7 @@ public sealed class PlayerStats : MonoBehaviour
         }
 
         Instance = this;
+        ApplySelectedCharacterStartingStats();
     }
 
     private void Start()
@@ -497,6 +498,25 @@ public sealed class PlayerStats : MonoBehaviour
             MakeEntry(PlayerStatId.Luck, "幸运", "运", luck, new Color(0.98f, 0.98f, 0.98f, 1f)),
             MakeEntry(PlayerStatId.Harvesting, "收获", "收", harvesting, new Color(1f, 0.90f, 0.48f, 1f)),
         };
+    }
+
+    private void ApplySelectedCharacterStartingStats()
+    {
+        if (!GameSessionState.TryConsumeNewRunCharacter(out string characterId)
+            || !CharacterCatalog.TryGetById(characterId, out CharacterDefinition character))
+        {
+            return;
+        }
+
+        IReadOnlyList<CharacterStatModifier> modifiers = character.StartingStatModifiers;
+        for (int index = 0; index < modifiers.Count; index++)
+        {
+            CharacterStatModifier modifier = modifiers[index];
+            if (modifier != null && modifier.Amount != 0)
+            {
+                AddStat(modifier.StatId, modifier.Amount);
+            }
+        }
     }
 
     public IReadOnlyList<PlayerStatDisplayEntry> BuildSecondaryDisplayEntries()

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -10,7 +11,6 @@ public sealed class MainMenuController : MonoBehaviour
     private enum ConfirmationAction
     {
         None,
-        StartNewRun,
         AbandonRun,
         ExitGame
     }
@@ -22,10 +22,18 @@ public sealed class MainMenuController : MonoBehaviour
     [SerializeField] private GameObject mainActionsPanel;
     [SerializeField] private Button startButton;
     [SerializeField] private Button continueButton;
-    [SerializeField] private Button abandonButton;
+    [SerializeField] private Button statsButton;
     [SerializeField] private Button settingsButton;
     [SerializeField] private Button exitButton;
-    [SerializeField] private TMP_Text sessionStatusText;
+    [SerializeField] private RectTransform selectedTag;
+    [SerializeField] private float selectedTagVerticalAdjustment = 1f;
+
+    [Header("Main Action Tag Offsets")]
+    [SerializeField] private Vector2 startTagOffset;
+    [SerializeField] private Vector2 continueTagOffset;
+    [SerializeField] private Vector2 settingsTagOffset;
+    [SerializeField] private Vector2 statsTagOffset;
+    [SerializeField] private Vector2 exitTagOffset;
 
     [Header("Settings")]
     [SerializeField] private GameObject settingsPanel;
@@ -53,10 +61,24 @@ public sealed class MainMenuController : MonoBehaviour
     private GameObject selectionBeforeConfirmation;
     private int titleInputStartFrame;
     private int selectedSaveSlotIndex;
+    private int selectedCharacterIndex;
     private bool deleteSaveFocused;
     private bool deleteMode;
     private bool hasLastMousePosition;
     private Vector3 lastMousePosition;
+    private Button[] mainActionButtons;
+    private int selectedMainActionIndex;
+    private bool hasLastMainActionMousePosition;
+    private Vector3 lastMainActionMousePosition;
+    private Vector3 selectedTagOffset;
+    private Vector3 selectedTagInitialLocalPosition;
+    private bool hasSelectedTagOffset;
+    private readonly List<RaycastResult> mainActionRaycastResults = new List<RaycastResult>();
+    private Button abandonButton;
+    private TMP_Text sessionStatusText;
+    private TMP_Text continueButtonLabel;
+    private Color continueButtonLabelColor;
+    private bool hasContinueButtonLabelColor;
 
     public bool HasSceneNavigationReferences => mainActionsPanel != null
         && navigationView != null
@@ -134,6 +156,14 @@ public sealed class MainMenuController : MonoBehaviour
         {
             HandleSaveSelectInput();
         }
+        else if (uiRouter.CurrentRoute == UIRoute.MainMenu)
+        {
+            HandleMainActionInput();
+        }
+        else if (uiRouter.CurrentRoute == UIRoute.CharacterSelect)
+        {
+            HandleCharacterSelectInput();
+        }
     }
 
     public void Configure(
@@ -177,9 +207,15 @@ public sealed class MainMenuController : MonoBehaviour
         startButton = startButton != null ? startButton : FindComponent<Button>("StartGameButton");
         continueButton = continueButton != null ? continueButton : FindComponent<Button>("ContinueGameButton");
         abandonButton = abandonButton != null ? abandonButton : FindComponent<Button>("AbandonRunButton");
+        statsButton = statsButton != null ? statsButton : FindComponent<Button>("StatsButton");
         settingsButton = settingsButton != null ? settingsButton : FindComponent<Button>("SettingsButton");
-        exitButton = exitButton != null ? exitButton : FindComponent<Button>("ExitGameButton");
+        exitButton = exitButton != null ? exitButton : FindComponent<Button>("ExitGameButton", "ExitButton");
+        selectedTag = selectedTag != null ? selectedTag : FindComponent<RectTransform>("SelectedTag");
         sessionStatusText = sessionStatusText != null ? sessionStatusText : FindComponent<TMP_Text>("SessionStatusText");
+
+        BuildMainActionButtons();
+        CaptureSelectedTagOffset();
+        CaptureContinueButtonLabelColor();
 
         settingsPanel = settingsPanel != null ? settingsPanel : FindObject("SettingsPanel");
         volumeSlider = volumeSlider != null ? volumeSlider : FindComponent<Slider>("VolumeSlider");
@@ -200,11 +236,8 @@ public sealed class MainMenuController : MonoBehaviour
     {
         if (GameSessionState.HasActiveRun)
         {
-            OpenConfirmation(
-                ConfirmationAction.StartNewRun,
-                "当前游戏尚未结束。\n开始新游戏会放弃当前进度。",
-                "放弃并开始新游戏");
-            return;
+            GameSessionState.AbandonRun();
+            RefreshSessionState();
         }
 
         OpenCharacterSelect();
@@ -263,7 +296,6 @@ public sealed class MainMenuController : MonoBehaviour
 
     public void OpenCharacterSelect()
     {
-        navigationView?.ShowDefaultCharacterSelected();
         uiRouter?.Navigate(UIRoute.CharacterSelect);
     }
 
@@ -277,7 +309,13 @@ public sealed class MainMenuController : MonoBehaviour
 
     public void StartSelectedCharacter()
     {
-        GameSessionState.BeginNewRun(GameSessionState.DefaultCharacterId);
+        CharacterDefinition selectedCharacter = navigationView?.GetCharacter(selectedCharacterIndex);
+        if (selectedCharacter == null || !selectedCharacter.Unlocked)
+        {
+            return;
+        }
+
+        GameSessionState.BeginNewRun(selectedCharacter.Id);
         LoadGameplayScene();
     }
 
@@ -306,11 +344,6 @@ public sealed class MainMenuController : MonoBehaviour
 
         switch (action)
         {
-            case ConfirmationAction.StartNewRun:
-                GameSessionState.AbandonRun();
-                RefreshSessionState();
-                OpenCharacterSelect();
-                break;
             case ConfirmationAction.AbandonRun:
                 GameSessionState.AbandonRun();
                 RefreshSessionState();
@@ -385,22 +418,16 @@ public sealed class MainMenuController : MonoBehaviour
         bool hasActiveRun = GameSessionState.HasActiveRun;
         if (continueButton != null)
         {
-            continueButton.gameObject.SetActive(hasActiveRun);
+            continueButton.gameObject.SetActive(true);
             continueButton.interactable = hasActiveRun;
         }
+
+        UpdateContinueButtonVisual(hasActiveRun);
 
         if (abandonButton != null)
         {
             abandonButton.gameObject.SetActive(hasActiveRun);
             abandonButton.interactable = hasActiveRun;
-        }
-
-        TMP_Text startLabel = startButton != null
-            ? startButton.GetComponentInChildren<TMP_Text>(true)
-            : null;
-        if (startLabel != null)
-        {
-            startLabel.text = hasActiveRun ? "新游戏" : "开始游戏";
         }
 
         if (mainMenuScreen != null && mainActionsPanel != null)
@@ -418,10 +445,45 @@ public sealed class MainMenuController : MonoBehaviour
                 : "当前没有进行中的游戏";
         }
 
-        if (!hasActiveRun && uiRouter != null && uiRouter.CurrentRoute == UIRoute.MainMenu)
+        if (uiRouter != null && uiRouter.CurrentRoute == UIRoute.MainMenu)
         {
-            startButton?.Select();
+            ApplyMainActionSelection();
         }
+    }
+
+    private void CaptureContinueButtonLabelColor()
+    {
+        continueButtonLabel = continueButton != null
+            ? continueButton.GetComponentInChildren<TMP_Text>(true)
+            : null;
+        if (continueButtonLabel == null)
+        {
+            return;
+        }
+
+        continueButtonLabelColor = continueButtonLabel.color;
+        hasContinueButtonLabelColor = true;
+    }
+
+    private void UpdateContinueButtonVisual(bool available)
+    {
+        if (!hasContinueButtonLabelColor)
+        {
+            CaptureContinueButtonLabelColor();
+        }
+
+        if (continueButtonLabel == null)
+        {
+            return;
+        }
+
+        continueButtonLabel.color = available
+            ? continueButtonLabelColor
+            : new Color(
+                continueButtonLabelColor.r * 0.35f,
+                continueButtonLabelColor.g * 0.35f,
+                continueButtonLabelColor.b * 0.35f,
+                continueButtonLabelColor.a);
     }
 
     private void SyncSettingsUi()
@@ -514,7 +576,7 @@ public sealed class MainMenuController : MonoBehaviour
         characterSelectScreen.Configure(
             UIRoute.CharacterSelect,
             navigationView.CharacterSelectPanel,
-            navigationView.DefaultCharacterButton);
+            navigationView.CharacterStartButton);
         settingsScreen.Configure(UIRoute.Settings, settingsPanel, volumeSlider);
         uiRouter.Register(titleScreen);
         uiRouter.Register(saveSelectScreen);
@@ -546,10 +608,11 @@ public sealed class MainMenuController : MonoBehaviour
         else if (route == UIRoute.MainMenu)
         {
             RefreshSessionState();
+            InitializeMainActionSelection();
         }
         else if (route == UIRoute.CharacterSelect)
         {
-            navigationView?.ShowDefaultCharacterSelected();
+            InitializeCharacterSelection();
         }
     }
 
@@ -570,14 +633,397 @@ public sealed class MainMenuController : MonoBehaviour
         return true;
     }
 
+    private void BuildMainActionButtons()
+    {
+        mainActionButtons = new[]
+        {
+            startButton,
+            continueButton,
+            abandonButton,
+            settingsButton,
+            statsButton,
+            exitButton
+        };
+    }
+
+    private void CaptureSelectedTagOffset()
+    {
+        if (selectedTag == null || startButton == null || selectedTag.parent == null)
+        {
+            return;
+        }
+
+        Transform tagParent = selectedTag.parent;
+        RectTransform startAnchor = GetMainActionAnchor(startButton);
+        Vector3 startPosition = tagParent.InverseTransformPoint(startAnchor.position);
+        selectedTagInitialLocalPosition = selectedTag.localPosition;
+        selectedTagOffset = selectedTag.localPosition - startPosition;
+        hasSelectedTagOffset = true;
+
+        Graphic tagGraphic = selectedTag.GetComponent<Graphic>();
+        if (tagGraphic != null)
+        {
+            tagGraphic.raycastTarget = false;
+        }
+    }
+
+    private void InitializeMainActionSelection()
+    {
+        if (mainActionButtons == null || mainActionButtons.Length == 0)
+        {
+            BuildMainActionButtons();
+        }
+
+        Button preferredButton = GameSessionState.HasActiveRun && IsMainActionAvailable(continueButton)
+            ? continueButton
+            : startButton;
+        selectedMainActionIndex = GetMainActionIndex(preferredButton);
+        if (selectedMainActionIndex < 0)
+        {
+            selectedMainActionIndex = FindAvailableMainActionIndex(0, 1);
+        }
+
+        hasLastMainActionMousePosition = true;
+        lastMainActionMousePosition = Input.mousePosition;
+        ApplyMainActionSelection();
+    }
+
+    private void HandleMainActionInput()
+    {
+        UpdateMainActionSelectionFromMouse();
+        RefreshSelectedTagPosition();
+
+        if (Input.GetKeyDown(KeyCode.W) || Input.GetKeyDown(KeyCode.UpArrow))
+        {
+            MoveMainActionSelection(-1);
+        }
+        else if (Input.GetKeyDown(KeyCode.S) || Input.GetKeyDown(KeyCode.DownArrow))
+        {
+            MoveMainActionSelection(1);
+        }
+
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            ActivateSelectedMainAction();
+        }
+    }
+
+    private void UpdateMainActionSelectionFromMouse()
+    {
+        Vector3 mousePosition = Input.mousePosition;
+        if (hasLastMainActionMousePosition
+            && (mousePosition - lastMainActionMousePosition).sqrMagnitude < 0.01f)
+        {
+            return;
+        }
+
+        hasLastMainActionMousePosition = true;
+        lastMainActionMousePosition = mousePosition;
+
+        if (EventSystem.current != null)
+        {
+            PointerEventData pointerData = new PointerEventData(EventSystem.current)
+            {
+                position = mousePosition
+            };
+            mainActionRaycastResults.Clear();
+            EventSystem.current.RaycastAll(pointerData, mainActionRaycastResults);
+            for (int resultIndex = 0; resultIndex < mainActionRaycastResults.Count; resultIndex++)
+            {
+                Button hoveredButton = mainActionRaycastResults[resultIndex].gameObject.GetComponentInParent<Button>();
+                int hoveredIndex = GetMainActionIndex(hoveredButton);
+                if (hoveredIndex < 0 || !IsMainActionAvailable(hoveredButton))
+                {
+                    continue;
+                }
+
+                selectedMainActionIndex = hoveredIndex;
+                ApplyMainActionSelection();
+                return;
+            }
+        }
+
+        Camera eventCamera = GetMainActionEventCamera();
+
+        for (int index = 0; index < mainActionButtons.Length; index++)
+        {
+            Button button = mainActionButtons[index];
+            RectTransform buttonRect = button != null ? button.transform as RectTransform : null;
+            if (!IsMainActionAvailable(button)
+                || buttonRect == null
+                || !RectTransformUtility.RectangleContainsScreenPoint(buttonRect, mousePosition, eventCamera))
+            {
+                continue;
+            }
+
+            selectedMainActionIndex = index;
+            ApplyMainActionSelection();
+            return;
+        }
+    }
+
+    private void MoveMainActionSelection(int direction)
+    {
+        if (mainActionButtons == null || mainActionButtons.Length == 0)
+        {
+            return;
+        }
+
+        int nextIndex = FindAvailableMainActionIndex(selectedMainActionIndex + direction, direction);
+        if (nextIndex >= 0)
+        {
+            selectedMainActionIndex = nextIndex;
+            ApplyMainActionSelection();
+        }
+    }
+
+    private int FindAvailableMainActionIndex(int startIndex, int direction)
+    {
+        if (mainActionButtons == null || mainActionButtons.Length == 0)
+        {
+            return -1;
+        }
+
+        int step = direction < 0 ? -1 : 1;
+        int index = ((startIndex % mainActionButtons.Length) + mainActionButtons.Length)
+            % mainActionButtons.Length;
+        for (int checkedCount = 0; checkedCount < mainActionButtons.Length; checkedCount++)
+        {
+            if (IsMainActionAvailable(mainActionButtons[index]))
+            {
+                return index;
+            }
+
+            index = (index + step + mainActionButtons.Length) % mainActionButtons.Length;
+        }
+
+        return -1;
+    }
+
+    private void ApplyMainActionSelection()
+    {
+        if (mainActionButtons == null
+            || selectedMainActionIndex < 0
+            || selectedMainActionIndex >= mainActionButtons.Length
+            || !IsMainActionAvailable(mainActionButtons[selectedMainActionIndex]))
+        {
+            selectedMainActionIndex = FindAvailableMainActionIndex(0, 1);
+        }
+
+        Button selectedButton = selectedMainActionIndex >= 0
+            ? mainActionButtons[selectedMainActionIndex]
+            : null;
+        UpdateSelectedTagPosition(selectedButton);
+        selectedButton?.Select();
+    }
+
+    private void RefreshSelectedTagPosition()
+    {
+        Button selectedButton = mainActionButtons != null
+            && selectedMainActionIndex >= 0
+            && selectedMainActionIndex < mainActionButtons.Length
+            ? mainActionButtons[selectedMainActionIndex]
+            : null;
+        UpdateSelectedTagPosition(selectedButton);
+    }
+
+    private void UpdateSelectedTagPosition(Button selectedButton)
+    {
+        if (selectedTag != null)
+        {
+            selectedTag.gameObject.SetActive(selectedButton != null);
+            if (selectedButton != null && selectedTag.parent != null)
+            {
+                if (!hasSelectedTagOffset)
+                {
+                    CaptureSelectedTagOffset();
+                }
+
+                RectTransform buttonAnchor = GetMainActionAnchor(selectedButton);
+                Vector3 buttonPosition = selectedTag.parent.InverseTransformPoint(buttonAnchor.position);
+                Vector2 manualOffset = GetMainActionTagOffset(selectedButton);
+                Vector3 tagPosition = selectedTagInitialLocalPosition;
+                tagPosition.x = buttonPosition.x + selectedTagOffset.x + manualOffset.x;
+                tagPosition.y = buttonPosition.y
+                    + selectedTagOffset.y
+                    + selectedTagVerticalAdjustment
+                    + manualOffset.y;
+                selectedTag.localPosition = tagPosition;
+            }
+        }
+    }
+
+    private void ActivateSelectedMainAction()
+    {
+        if (mainActionButtons == null
+            || selectedMainActionIndex < 0
+            || selectedMainActionIndex >= mainActionButtons.Length)
+        {
+            return;
+        }
+
+        Button selectedButton = mainActionButtons[selectedMainActionIndex];
+        if (IsMainActionAvailable(selectedButton))
+        {
+            selectedButton.onClick.Invoke();
+        }
+    }
+
+    private int GetMainActionIndex(Button button)
+    {
+        if (button == null || mainActionButtons == null)
+        {
+            return -1;
+        }
+
+        for (int index = 0; index < mainActionButtons.Length; index++)
+        {
+            if (mainActionButtons[index] == button)
+            {
+                return index;
+            }
+        }
+
+        return -1;
+    }
+
+    private static RectTransform GetMainActionAnchor(Button button)
+    {
+        if (button != null && button.transform.childCount > 0)
+        {
+            RectTransform child = button.transform.GetChild(0) as RectTransform;
+            if (child != null)
+            {
+                return child;
+            }
+        }
+
+        return button != null ? button.transform as RectTransform : null;
+    }
+
+    private Vector2 GetMainActionTagOffset(Button button)
+    {
+        if (button == startButton)
+        {
+            return startTagOffset;
+        }
+
+        if (button == continueButton)
+        {
+            return continueTagOffset;
+        }
+
+        if (button == settingsButton)
+        {
+            return settingsTagOffset;
+        }
+
+        if (button == statsButton)
+        {
+            return statsTagOffset;
+        }
+
+        if (button == exitButton)
+        {
+            return exitTagOffset;
+        }
+
+        return Vector2.zero;
+    }
+
+    private void SelectMainAction(Button button)
+    {
+        int index = GetMainActionIndex(button);
+        if (index < 0)
+        {
+            return;
+        }
+
+        selectedMainActionIndex = index;
+        ApplyMainActionSelection();
+    }
+
+    private void SelectStartMainAction() => SelectMainAction(startButton);
+    private void SelectContinueMainAction() => SelectMainAction(continueButton);
+    private void SelectStatsMainAction() => SelectMainAction(statsButton);
+    private void SelectSettingsMainAction() => SelectMainAction(settingsButton);
+    private void SelectExitMainAction() => SelectMainAction(exitButton);
+
+    private Camera GetMainActionEventCamera()
+    {
+        Canvas canvas = mainActionsPanel != null ? mainActionsPanel.GetComponentInParent<Canvas>() : null;
+        return canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay
+            ? canvas.worldCamera
+            : null;
+    }
+
+    private static bool IsMainActionAvailable(Button button)
+    {
+        return button != null && button.gameObject.activeInHierarchy && button.interactable;
+    }
+
     private void SelectSaveSlot1()
     {
         SelectSaveSlotFromMouse(0);
     }
 
-    private void SelectDefaultCharacter()
+    private void InitializeCharacterSelection()
     {
-        navigationView?.ShowDefaultCharacterSelected();
+        int characterCount = navigationView != null ? navigationView.CharacterCount : 0;
+        if (characterCount <= 0)
+        {
+            selectedCharacterIndex = 0;
+            navigationView?.ShowCharacterSelected(0);
+            return;
+        }
+
+        int savedCharacterIndex = CharacterCatalog.IndexOf(GameSessionState.CurrentCharacterId);
+        selectedCharacterIndex = savedCharacterIndex >= 0 ? savedCharacterIndex : 0;
+        ApplyCharacterSelection();
+    }
+
+    private void HandleCharacterSelectInput()
+    {
+        if (Input.GetKeyDown(KeyCode.A) || Input.GetKeyDown(KeyCode.LeftArrow))
+        {
+            MoveCharacterSelection(-1);
+        }
+        else if (Input.GetKeyDown(KeyCode.D) || Input.GetKeyDown(KeyCode.RightArrow))
+        {
+            MoveCharacterSelection(1);
+        }
+
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            StartSelectedCharacter();
+        }
+    }
+
+    private void SelectPreviousCharacter()
+    {
+        MoveCharacterSelection(-1);
+    }
+
+    private void SelectNextCharacter()
+    {
+        MoveCharacterSelection(1);
+    }
+
+    private void MoveCharacterSelection(int direction)
+    {
+        int characterCount = navigationView != null ? navigationView.CharacterCount : 0;
+        if (characterCount <= 0)
+        {
+            return;
+        }
+
+        selectedCharacterIndex = (selectedCharacterIndex + direction + characterCount) % characterCount;
+        ApplyCharacterSelection();
+    }
+
+    private void ApplyCharacterSelection()
+    {
+        navigationView?.ShowCharacterSelected(selectedCharacterIndex);
     }
 
     private void SelectSaveSlot2()
@@ -840,9 +1286,15 @@ public sealed class MainMenuController : MonoBehaviour
         AddListener(navigationView != null ? navigationView.SaveSelectConfirmButton : null, ConfirmSelectedSave);
         AddListener(navigationView != null ? navigationView.DeleteFileButton : null, ToggleDeleteMode);
         AddListener(navigationView != null ? navigationView.SaveSelectBackButton : null, CloseSaveSelect);
-        AddListener(navigationView != null ? navigationView.DefaultCharacterButton : null, SelectDefaultCharacter);
+        AddListener(navigationView != null ? navigationView.CharacterPreviousButton : null, SelectPreviousCharacter);
+        AddListener(navigationView != null ? navigationView.CharacterNextButton : null, SelectNextCharacter);
         AddListener(navigationView != null ? navigationView.CharacterStartButton : null, StartSelectedCharacter);
         AddListener(navigationView != null ? navigationView.CharacterBackButton : null, CloseCharacterSelect);
+        AddListener(startButton, SelectStartMainAction);
+        AddListener(continueButton, SelectContinueMainAction);
+        AddListener(statsButton, SelectStatsMainAction);
+        AddListener(settingsButton, SelectSettingsMainAction);
+        AddListener(exitButton, SelectExitMainAction);
         AddListener(startButton, StartNewGame);
         AddListener(continueButton, ContinueGame);
         AddListener(abandonButton, RequestAbandonRun);
@@ -864,9 +1316,15 @@ public sealed class MainMenuController : MonoBehaviour
         RemoveListener(navigationView != null ? navigationView.SaveSelectConfirmButton : null, ConfirmSelectedSave);
         RemoveListener(navigationView != null ? navigationView.DeleteFileButton : null, ToggleDeleteMode);
         RemoveListener(navigationView != null ? navigationView.SaveSelectBackButton : null, CloseSaveSelect);
-        RemoveListener(navigationView != null ? navigationView.DefaultCharacterButton : null, SelectDefaultCharacter);
+        RemoveListener(navigationView != null ? navigationView.CharacterPreviousButton : null, SelectPreviousCharacter);
+        RemoveListener(navigationView != null ? navigationView.CharacterNextButton : null, SelectNextCharacter);
         RemoveListener(navigationView != null ? navigationView.CharacterStartButton : null, StartSelectedCharacter);
         RemoveListener(navigationView != null ? navigationView.CharacterBackButton : null, CloseCharacterSelect);
+        RemoveListener(startButton, SelectStartMainAction);
+        RemoveListener(continueButton, SelectContinueMainAction);
+        RemoveListener(statsButton, SelectStatsMainAction);
+        RemoveListener(settingsButton, SelectSettingsMainAction);
+        RemoveListener(exitButton, SelectExitMainAction);
         RemoveListener(startButton, StartNewGame);
         RemoveListener(continueButton, ContinueGame);
         RemoveListener(abandonButton, RequestAbandonRun);

@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 57704df15b0e4a108f7612796cd3e8bd, type: 3}
+  m_Name: LuckyStar
+  m_EditorClassIdentifier: 
+  id: character.lucky_star
+  displayOrder: 3
+  visibleInSelection: 1
+  unlocked: 0
+  displayName: "\u5E78\u8FD0\u661F"
+  typeLabel: "\u5E78\u8FD0\u578B"
+  description: "\u5E78\u8FD0 +15\n\u6536\u83B7 +10\n\u4F24\u5BB3 -10"
+  portrait: {fileID: 0}
+  startingWeaponId: weapon.rock.tier_1
+  startingWeaponDisplayName: "\u77F3\u5934"
+  startingStatModifiers:
+  - statId: 15
+    amount: 15
+  - statId: 16
+    amount: 10
+  - statId: 4
+    amount: -10

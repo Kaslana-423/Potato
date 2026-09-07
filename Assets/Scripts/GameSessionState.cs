@@ -32,6 +32,7 @@ public static class GameSessionState
     public static float MasterVolume => Mathf.Clamp01(PlayerPrefs.GetFloat(MasterVolumeKey, 1f));
     public static bool Fullscreen => PlayerPrefs.GetInt(FullscreenKey, Screen.fullScreen ? 1 : 0) == 1;
     public static string CurrentCharacterId { get; private set; } = DefaultCharacterId;
+    public static bool IsNewRunPendingInitialization { get; private set; }
 
     public static void BeginNewRun()
     {
@@ -43,12 +44,26 @@ public static class GameSessionState
         CurrentCharacterId = NormalizeCharacterId(characterId);
         DeleteRunSaveFiles();
         DeleteLegacyRunSave();
+        IsNewRunPendingInitialization = true;
     }
 
     public static void AbandonRun()
     {
         DeleteRunSaveFiles();
         DeleteLegacyRunSave();
+        IsNewRunPendingInitialization = false;
+    }
+
+    public static bool TryConsumeNewRunCharacter(out string characterId)
+    {
+        characterId = CurrentCharacterId;
+        if (!IsNewRunPendingInitialization)
+        {
+            return false;
+        }
+
+        IsNewRunPendingInitialization = false;
+        return true;
     }
 
     public static void SaveRun(RunSaveData saveData)

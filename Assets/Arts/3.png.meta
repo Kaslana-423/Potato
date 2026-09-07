@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 931e9767e2b64fc408b4e2d87eb1bd6e
+guid: 3937a05385edb8a4fb1894e9922acf90
 TextureImporter:
   internalIDToNameTable: []
   externalObjects: {}
@@ -136,13 +136,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: "\u56FE\u5C42 3_0"
+      name: 3_0
       rect:
         serializedVersion: 2
-        x: 0
-        y: 167
-        width: 186
-        height: 77
+        x: 64
+        y: 1069
+        width: 151
+        height: 199
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -150,20 +150,20 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 6919cec9fb1606245b0862dc061f55cb
-      internalID: -10668072
+      spriteID: 83c832f9f062d8141a4fb0130e9fcc99
+      internalID: 1324622754
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: "\u56FE\u5C42 3_1"
+      name: 3_1
       rect:
         serializedVersion: 2
-        x: 12
-        y: 21
-        width: 94
-        height: 66
+        x: 282
+        y: 1130
+        width: 415
+        height: 149
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -171,20 +171,20 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: ef2a947c585dc0a4b92f3359f39e88ea
-      internalID: 1641792851
+      spriteID: cc9aee7918c6e074f9365031e975f507
+      internalID: 609157488
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: "\u56FE\u5C42 3_2"
+      name: 3_2
       rect:
         serializedVersion: 2
-        x: 162
-        y: 0
-        width: 175
-        height: 44
+        x: 738
+        y: 1077
+        width: 350
+        height: 233
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -192,20 +192,20 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: e250d96e2eacb4940859baa7b7178e28
-      internalID: -898079953
+      spriteID: e0cbe366558487a4a9afc9c64eac982c
+      internalID: 2100542621
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: "\u56FE\u5C42 3_3"
+      name: 3_3
       rect:
         serializedVersion: 2
-        x: 385
-        y: 23
-        width: 128
-        height: 72
+        x: 507
+        y: 896
+        width: 262
+        height: 139
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -213,20 +213,20 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: e2abb4fa23e37dc4e9c7045fd5164223
-      internalID: -1131431585
+      spriteID: 7e2bd9b1a5e8415469b49d86c6a6cfc1
+      internalID: 1617672787
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: "\u56FE\u5C42 3_4"
+      name: 3_4
       rect:
         serializedVersion: 2
-        x: 367
-        y: 144
-        width: 44
-        height: 82
+        x: 819
+        y: 858
+        width: 250
+        height: 207
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -234,8 +234,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 8887634622b157241a5d8de62ea87ac2
-      internalID: 1609903589
+      spriteID: b55f0b194ef2a6a4b81d9b71187202e1
+      internalID: 276679077
       vertices: []
       indices: 
       edges: []
@@ -251,11 +251,11 @@ TextureImporter:
     weights: []
     secondaryTextures: []
     nameFileIdTable:
-      "\u56FE\u5C42 3_0": -10668072
-      "\u56FE\u5C42 3_1": 1641792851
-      "\u56FE\u5C42 3_2": -898079953
-      "\u56FE\u5C42 3_3": -1131431585
-      "\u56FE\u5C42 3_4": 1609903589
+      3_0: 1324622754
+      3_1: 609157488
+      3_2: 2100542621
+      3_3: 1617672787
+      3_4: 276679077
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

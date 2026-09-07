@@ -25,7 +25,8 @@ public sealed class WeaponBag : ShopBagBase
 
     public void EnsureStartingWeapon()
     {
-        if (!addStartingWeapon || Count > 0 || string.IsNullOrWhiteSpace(startingWeaponId))
+        string resolvedStartingWeaponId = ResolveStartingWeaponId();
+        if (!addStartingWeapon || Count > 0 || string.IsNullOrWhiteSpace(resolvedStartingWeaponId))
         {
             return;
         }
@@ -33,18 +34,26 @@ public sealed class WeaponBag : ShopBagBase
         foreach (ShopContentDefinition content in ShopContentCatalog.All)
         {
             if (content is ShopWeaponDefinition
-                && string.Equals(content.Id, startingWeaponId, StringComparison.OrdinalIgnoreCase))
+                && string.Equals(content.Id, resolvedStartingWeaponId, StringComparison.OrdinalIgnoreCase))
             {
                 if (!TryAdd(content, out string failureReason))
                 {
-                    Debug.LogWarning($"Could not add starting weapon '{startingWeaponId}': {failureReason}", this);
+                    Debug.LogWarning($"Could not add starting weapon '{resolvedStartingWeaponId}': {failureReason}", this);
                 }
 
                 return;
             }
         }
 
-        Debug.LogWarning($"Starting weapon '{startingWeaponId}' was not found in the shop catalog.", this);
+        Debug.LogWarning($"Starting weapon '{resolvedStartingWeaponId}' was not found in the shop catalog.", this);
+    }
+
+    private string ResolveStartingWeaponId()
+    {
+        CharacterDefinition character = CharacterCatalog.FindById(GameSessionState.CurrentCharacterId);
+        return character != null && !string.IsNullOrWhiteSpace(character.StartingWeaponId)
+            ? character.StartingWeaponId
+            : startingWeaponId;
     }
 
     protected override bool CanAdd(ShopContentDefinition content, out string failureReason)

@@ -119,7 +119,7 @@ public static class SceneUiObjectInitializer
         UIScreen characterSelectScreen = ConfigureScreen(
             navigationView.CharacterSelectPanel,
             UIRoute.CharacterSelect,
-            navigationView.DefaultCharacterButton);
+            navigationView.CharacterStartButton);
         UIScreen settingsScreen = ConfigureScreen(settingsPanel, UIRoute.Settings, FindSlider(settingsPanel, "VolumeSlider"));
 
         controller.ConfigureNavigationReferences(
