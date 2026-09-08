@@ -762,7 +762,7 @@ public sealed class EnemySpawner : MonoBehaviour
 
         if (playerExperience != null)
         {
-            PlayerExperienceHudView.GetOrCreate(playerExperience);
+            PlayerExperienceHudView.FindAndBind(playerExperience);
         }
 
         if (levelUpRewardController == null)

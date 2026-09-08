@@ -2097,12 +2097,7 @@ MonoBehaviour:
   settingsButton: {fileID: 146680742}
   exitButton: {fileID: 1717988402}
   selectedTag: {fileID: 1681910673}
-  selectedTagVerticalAdjustment: 0
-  startTagOffset: {x: -91, y: 137}
-  continueTagOffset: {x: -67, y: 140}
-  settingsTagOffset: {x: -65, y: 137}
-  statsTagOffset: {x: -2, y: 144}
-  exitTagOffset: {x: 20, y: 143}
+  selectedTagSpacing: 12
   settingsPanel: {fileID: 1321415782}
   volumeSlider: {fileID: 1483657754}
   volumeValueText: {fileID: 1694424185}
@@ -2186,8 +2181,10 @@ MonoBehaviour:
   - {fileID: 1383655588}
   - {fileID: 548577766}
   - {fileID: 822223703}
-  selectedCharacterPageDotSprite: {fileID: -1824034566, guid: a393c261077b08c4a821ee825a5e3c25, type: 3}
-  unselectedCharacterPageDotSprite: {fileID: 21300000, guid: f8608c0ef3188d04c9a862e2d0acc008, type: 3}
+  selectedCharacterPageDotSprite: {fileID: -1824034566, guid: a393c261077b08c4a821ee825a5e3c25,
+    type: 3}
+  unselectedCharacterPageDotSprite: {fileID: 21300000, guid: f8608c0ef3188d04c9a862e2d0acc008,
+    type: 3}
   characterPageDotSpacing: 38
 --- !u!1 &355845012
 GameObject:
@@ -4372,7 +4369,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &786990158
 RectTransform:
   m_ObjectHideFlags: 0
@@ -5291,7 +5288,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &904873573
 RectTransform:
   m_ObjectHideFlags: 0
@@ -9981,8 +9978,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 10.918}
   m_AnchorMin: {x: 0.5, y: 0.293}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -60.6, y: -182.3}
-  m_SizeDelta: {x: 160, y: -136}
+  m_AnchoredPosition: {x: -56, y: -174}
+  m_SizeDelta: {x: 191.0572, y: -105.0872}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1717988402
 MonoBehaviour:

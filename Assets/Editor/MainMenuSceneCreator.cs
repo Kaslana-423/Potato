@@ -1,4 +1,5 @@
 using System.IO;
+using System.Collections.Generic;
 using TMPro;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -12,6 +13,7 @@ public static class MainMenuSceneCreator
     private const string SceneDirectory = "Assets/Scenes";
     private const string ScenePath = SceneDirectory + "/MainMenu.unity";
     private const string GameplayScenePath = SceneDirectory + "/SampleScene.unity";
+    private const string PreviousGameplayScenePath = SceneDirectory + "/MainGame.unity";
     private const string ChineseFontPath =
         "Assets/TextMesh Pro/Resources/Fonts & Materials/SmileySans-Oblique SDF.asset";
 
@@ -25,9 +27,82 @@ public static class MainMenuSceneCreator
     [InitializeOnLoadMethod]
     private static void ScheduleMissingSceneGeneration()
     {
+        EditorApplication.playModeStateChanged -= HandlePlayModeStateChanged;
+        EditorApplication.playModeStateChanged += HandlePlayModeStateChanged;
+        EditorApplication.delayCall += EnsureRequiredScenesInBuildSettings;
+
         if (!File.Exists(ScenePath))
         {
             EditorApplication.delayCall += CreateMissingMainMenuScene;
+        }
+    }
+
+    private static void EnsureRequiredScenesInBuildSettings()
+    {
+        if (EditorApplication.isCompiling
+            || EditorApplication.isUpdating)
+        {
+            EditorApplication.delayCall += EnsureRequiredScenesInBuildSettings;
+            return;
+        }
+
+        if (EditorApplication.isPlayingOrWillChangePlaymode)
+        {
+            return;
+        }
+
+        List<EditorBuildSettingsScene> scenes = new List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
+        bool changed = false;
+
+        for (int i = scenes.Count - 1; i >= 0; i--)
+        {
+            if (scenes[i].path == PreviousGameplayScenePath
+                && AssetDatabase.LoadAssetAtPath<SceneAsset>(PreviousGameplayScenePath) == null)
+            {
+                scenes.RemoveAt(i);
+                changed = true;
+            }
+        }
+
+        EnsureBuildScene(scenes, ScenePath, ref changed);
+        EnsureBuildScene(scenes, GameplayScenePath, ref changed);
+
+        if (changed)
+        {
+            EditorBuildSettings.scenes = scenes.ToArray();
+        }
+    }
+
+    private static void HandlePlayModeStateChanged(PlayModeStateChange state)
+    {
+        if (state == PlayModeStateChange.EnteredEditMode)
+        {
+            EditorApplication.delayCall += EnsureRequiredScenesInBuildSettings;
+        }
+    }
+
+    private static void EnsureBuildScene(
+        List<EditorBuildSettingsScene> scenes,
+        string scenePath,
+        ref bool changed)
+    {
+        if (AssetDatabase.LoadAssetAtPath<SceneAsset>(scenePath) == null)
+        {
+            return;
+        }
+
+        int index = scenes.FindIndex(scene => scene.path == scenePath);
+        if (index < 0)
+        {
+            scenes.Add(new EditorBuildSettingsScene(scenePath, true));
+            changed = true;
+            return;
+        }
+
+        if (!scenes[index].enabled)
+        {
+            scenes[index] = new EditorBuildSettingsScene(scenePath, true);
+            changed = true;
         }
     }
 

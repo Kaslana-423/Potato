@@ -4,19 +4,49 @@ using UnityEngine.UI;
 
 public sealed class PlayerExperienceHudView : MonoBehaviour
 {
-    private const string FontResourcePath = "Fonts & Materials/SmileySans-Oblique SDF";
+    [Header("Data")]
+    [SerializeField] private PlayerExperience experience;
+    [SerializeField] private bool bindExperienceOnEnable = true;
 
-    private PlayerExperience experience;
-    private TMP_Text levelText;
-    private TMP_Text experienceText;
-    private Image fillImage;
+    [Header("UI")]
+    [SerializeField] private TMP_Text levelText;
+    [SerializeField] private TMP_Text experienceText;
+    [SerializeField] private Image fillImage;
+
+    private PlayerExperience subscribedExperience;
+
+    public bool HasSceneReferences => experience != null
+        && levelText != null
+        && experienceText != null
+        && fillImage != null;
+
+    private void Awake()
+    {
+        AutoBindReferences();
+    }
+
+    private void OnEnable()
+    {
+        AutoBindReferences();
+        if (bindExperienceOnEnable)
+        {
+            Bind(experience);
+        }
+
+        Refresh();
+    }
+
+    private void OnDisable()
+    {
+        Unsubscribe();
+    }
 
     private void OnDestroy()
     {
-        Bind(null);
+        Unsubscribe();
     }
 
-    public static PlayerExperienceHudView GetOrCreate(PlayerExperience playerExperience)
+    public static PlayerExperienceHudView FindAndBind(PlayerExperience playerExperience)
     {
         Transform playerState = FindPlayerState();
         PlayerExperienceHudView existing = playerState != null
@@ -25,13 +55,8 @@ public sealed class PlayerExperienceHudView : MonoBehaviour
 
         if (existing == null)
         {
-            if (playerState == null)
-            {
-                Debug.LogWarning("PlayerExperienceHudView could not find PlayerState, so the experience bar was not created.");
-                return null;
-            }
-
-            existing = playerState.gameObject.AddComponent<PlayerExperienceHudView>();
+            Debug.LogError("SampleScene is missing its PlayerExperienceHudView scene component.");
+            return null;
         }
 
         existing.EnsureUi();
@@ -41,24 +66,29 @@ public sealed class PlayerExperienceHudView : MonoBehaviour
 
     public void Bind(PlayerExperience playerExperience)
     {
-        if (experience == playerExperience)
+        if (subscribedExperience != playerExperience)
         {
-            Refresh();
-            return;
-        }
-
-        if (experience != null)
-        {
-            experience.ExperienceChanged -= HandleExperienceChanged;
+            Unsubscribe();
+            subscribedExperience = playerExperience;
+            if (subscribedExperience != null)
+            {
+                subscribedExperience.ExperienceChanged += HandleExperienceChanged;
+            }
         }
 
         experience = playerExperience;
-        if (experience != null)
+        Refresh();
+    }
+
+    [ContextMenu("Auto Bind References")]
+    public void AutoBindReferences()
+    {
+        if (experience == null)
         {
-            experience.ExperienceChanged += HandleExperienceChanged;
+            experience = FindObjectOfType<PlayerExperience>(true);
         }
 
-        Refresh();
+        BindUiReferences();
     }
 
     private void HandleExperienceChanged(PlayerExperience changedExperience)
@@ -80,10 +110,10 @@ public sealed class PlayerExperienceHudView : MonoBehaviour
 
     private void EnsureUi()
     {
-        BindUiReferences();
+        AutoBindReferences();
         if (levelText == null || experienceText == null || fillImage == null)
         {
-            BuildUi();
+            Debug.LogError("PlayerState experience UI references are incomplete in SampleScene.", this);
         }
     }
 
@@ -102,62 +132,13 @@ public sealed class PlayerExperienceHudView : MonoBehaviour
             ?? root.Find("Bar/Fill")?.GetComponent<Image>();
     }
 
-    private void BuildUi()
+    private void Unsubscribe()
     {
-        TMP_FontAsset font = Resources.Load<TMP_FontAsset>(FontResourcePath);
-        Transform oldRoot = transform.Find("Experience");
-        if (oldRoot != null)
+        if (subscribedExperience != null)
         {
-            Destroy(oldRoot.gameObject);
+            subscribedExperience.ExperienceChanged -= HandleExperienceChanged;
+            subscribedExperience = null;
         }
-
-        GameObject root = CreateUiObject("Experience", transform);
-        RectTransform rootRect = root.GetComponent<RectTransform>();
-        RectTransform healthRect = transform.Find("Blood") as RectTransform;
-        if (healthRect != null)
-        {
-            CopyRectLayout(healthRect, rootRect);
-            rootRect.anchoredPosition += Vector2.down * (healthRect.sizeDelta.y + 125f);
-            rootRect.sizeDelta = new Vector2(healthRect.sizeDelta.x, 64f);
-        }
-        else
-        {
-            rootRect.anchorMin = new Vector2(0f, 1f);
-            rootRect.anchorMax = new Vector2(0f, 1f);
-            rootRect.pivot = new Vector2(0f, 1f);
-            rootRect.anchoredPosition = new Vector2(24f, -220f);
-            rootRect.sizeDelta = new Vector2(600f, 64f);
-        }
-
-        Image rootImage = root.AddComponent<Image>();
-        rootImage.color = new Color(0.04f, 0.045f, 0.06f, 0.9f);
-        rootImage.raycastTarget = false;
-
-        levelText = CreateText("Level", root.transform, font, 24f, FontStyles.Bold);
-        SetRect(levelText.rectTransform, new Vector2(0.02f, 0.12f), new Vector2(0.24f, 0.88f));
-        levelText.alignment = TextAlignmentOptions.Center;
-
-        GameObject bar = CreateUiObject("Bar", root.transform);
-        SetRect(bar.GetComponent<RectTransform>(), new Vector2(0.27f, 0.22f), new Vector2(0.96f, 0.78f));
-        Image barImage = bar.AddComponent<Image>();
-        barImage.color = new Color(0.12f, 0.13f, 0.16f, 1f);
-
-        GameObject fill = CreateUiObject("Fill", bar.transform);
-        Stretch(fill.GetComponent<RectTransform>());
-        fillImage = fill.AddComponent<Image>();
-        fillImage.color = new Color(0.22f, 0.88f, 0.32f, 1f);
-        fillImage.type = Image.Type.Filled;
-        fillImage.fillMethod = Image.FillMethod.Horizontal;
-        fillImage.fillOrigin = 0;
-        Image healthFill = transform.Find("Blood/Fill")?.GetComponent<Image>();
-        if (healthFill != null)
-        {
-            fillImage.sprite = healthFill.sprite;
-        }
-
-        experienceText = CreateText("Value", bar.transform, font, 18f, FontStyles.Bold);
-        Stretch(experienceText.rectTransform);
-        experienceText.alignment = TextAlignmentOptions.Center;
     }
 
     private static Transform FindPlayerState()
@@ -172,56 +153,4 @@ public sealed class PlayerExperienceHudView : MonoBehaviour
         return playerState != null ? playerState.transform : null;
     }
 
-    private static void CopyRectLayout(RectTransform source, RectTransform destination)
-    {
-        destination.anchorMin = source.anchorMin;
-        destination.anchorMax = source.anchorMax;
-        destination.pivot = source.pivot;
-        destination.anchoredPosition = source.anchoredPosition;
-        destination.sizeDelta = source.sizeDelta;
-        destination.localRotation = source.localRotation;
-        destination.localScale = source.localScale;
-    }
-
-    private static GameObject CreateUiObject(string objectName, Transform parent)
-    {
-        GameObject result = new GameObject(objectName, typeof(RectTransform));
-        result.layer = 5;
-        result.transform.SetParent(parent, false);
-        return result;
-    }
-
-    private static TMP_Text CreateText(
-        string objectName,
-        Transform parent,
-        TMP_FontAsset font,
-        float fontSize,
-        FontStyles style)
-    {
-        GameObject textObject = CreateUiObject(objectName, parent);
-        TMP_Text text = textObject.AddComponent<TextMeshProUGUI>();
-        if (font != null)
-        {
-            text.font = font;
-        }
-
-        text.fontSize = fontSize;
-        text.fontStyle = style;
-        text.color = Color.white;
-        text.raycastTarget = false;
-        return text;
-    }
-
-    private static void SetRect(RectTransform rect, Vector2 anchorMin, Vector2 anchorMax)
-    {
-        rect.anchorMin = anchorMin;
-        rect.anchorMax = anchorMax;
-        rect.offsetMin = Vector2.zero;
-        rect.offsetMax = Vector2.zero;
-    }
-
-    private static void Stretch(RectTransform rect)
-    {
-        SetRect(rect, Vector2.zero, Vector2.one);
-    }
 }

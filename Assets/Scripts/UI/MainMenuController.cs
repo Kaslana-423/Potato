@@ -26,14 +26,7 @@ public sealed class MainMenuController : MonoBehaviour
     [SerializeField] private Button settingsButton;
     [SerializeField] private Button exitButton;
     [SerializeField] private RectTransform selectedTag;
-    [SerializeField] private float selectedTagVerticalAdjustment = 1f;
-
-    [Header("Main Action Tag Offsets")]
-    [SerializeField] private Vector2 startTagOffset;
-    [SerializeField] private Vector2 continueTagOffset;
-    [SerializeField] private Vector2 settingsTagOffset;
-    [SerializeField] private Vector2 statsTagOffset;
-    [SerializeField] private Vector2 exitTagOffset;
+    [SerializeField, Min(0f)] private float selectedTagSpacing = 12f;
 
     [Header("Settings")]
     [SerializeField] private GameObject settingsPanel;
@@ -70,9 +63,8 @@ public sealed class MainMenuController : MonoBehaviour
     private int selectedMainActionIndex;
     private bool hasLastMainActionMousePosition;
     private Vector3 lastMainActionMousePosition;
-    private Vector3 selectedTagOffset;
-    private Vector3 selectedTagInitialLocalPosition;
-    private bool hasSelectedTagOffset;
+    private Quaternion selectedTagRotationOffset = Quaternion.identity;
+    private bool hasSelectedTagRotationOffset;
     private readonly List<RaycastResult> mainActionRaycastResults = new List<RaycastResult>();
     private Button abandonButton;
     private TMP_Text sessionStatusText;
@@ -214,7 +206,7 @@ public sealed class MainMenuController : MonoBehaviour
         sessionStatusText = sessionStatusText != null ? sessionStatusText : FindComponent<TMP_Text>("SessionStatusText");
 
         BuildMainActionButtons();
-        CaptureSelectedTagOffset();
+        CaptureSelectedTagRotationOffset();
         CaptureContinueButtonLabelColor();
 
         settingsPanel = settingsPanel != null ? settingsPanel : FindObject("SettingsPanel");
@@ -401,6 +393,17 @@ public sealed class MainMenuController : MonoBehaviour
     {
         if (!Application.CanStreamedLevelBeLoaded(gameplaySceneName))
         {
+#if UNITY_EDITOR
+            string gameplayScenePath = $"Assets/Scenes/{gameplaySceneName}.unity";
+            if (UnityEditor.AssetDatabase.LoadAssetAtPath<UnityEditor.SceneAsset>(gameplayScenePath) != null)
+            {
+                UnityEditor.SceneManagement.EditorSceneManager.LoadSceneInPlayMode(
+                    gameplayScenePath,
+                    new LoadSceneParameters(LoadSceneMode.Single));
+                return;
+            }
+#endif
+
             if (sessionStatusText != null)
             {
                 sessionStatusText.text = $"无法加载场景：{gameplaySceneName}";
@@ -477,13 +480,7 @@ public sealed class MainMenuController : MonoBehaviour
             return;
         }
 
-        continueButtonLabel.color = available
-            ? continueButtonLabelColor
-            : new Color(
-                continueButtonLabelColor.r * 0.35f,
-                continueButtonLabelColor.g * 0.35f,
-                continueButtonLabelColor.b * 0.35f,
-                continueButtonLabelColor.a);
+        continueButtonLabel.color = available ? continueButtonLabelColor : Color.white;
     }
 
     private void SyncSettingsUi()
@@ -646,19 +643,15 @@ public sealed class MainMenuController : MonoBehaviour
         };
     }
 
-    private void CaptureSelectedTagOffset()
+    private void CaptureSelectedTagRotationOffset()
     {
-        if (selectedTag == null || startButton == null || selectedTag.parent == null)
+        if (selectedTag == null || startButton == null)
         {
             return;
         }
 
-        Transform tagParent = selectedTag.parent;
-        RectTransform startAnchor = GetMainActionAnchor(startButton);
-        Vector3 startPosition = tagParent.InverseTransformPoint(startAnchor.position);
-        selectedTagInitialLocalPosition = selectedTag.localPosition;
-        selectedTagOffset = selectedTag.localPosition - startPosition;
-        hasSelectedTagOffset = true;
+        selectedTagRotationOffset = Quaternion.Inverse(startButton.transform.rotation) * selectedTag.rotation;
+        hasSelectedTagRotationOffset = true;
 
         Graphic tagGraphic = selectedTag.GetComponent<Graphic>();
         if (tagGraphic != null)
@@ -832,23 +825,26 @@ public sealed class MainMenuController : MonoBehaviour
         if (selectedTag != null)
         {
             selectedTag.gameObject.SetActive(selectedButton != null);
-            if (selectedButton != null && selectedTag.parent != null)
+            if (selectedButton != null)
             {
-                if (!hasSelectedTagOffset)
+                if (!hasSelectedTagRotationOffset)
                 {
-                    CaptureSelectedTagOffset();
+                    CaptureSelectedTagRotationOffset();
                 }
 
-                RectTransform buttonAnchor = GetMainActionAnchor(selectedButton);
-                Vector3 buttonPosition = selectedTag.parent.InverseTransformPoint(buttonAnchor.position);
-                Vector2 manualOffset = GetMainActionTagOffset(selectedButton);
-                Vector3 tagPosition = selectedTagInitialLocalPosition;
-                tagPosition.x = buttonPosition.x + selectedTagOffset.x + manualOffset.x;
-                tagPosition.y = buttonPosition.y
-                    + selectedTagOffset.y
-                    + selectedTagVerticalAdjustment
-                    + manualOffset.y;
-                selectedTag.localPosition = tagPosition;
+                RectTransform buttonRect = selectedButton.transform as RectTransform;
+                if (buttonRect == null)
+                {
+                    return;
+                }
+
+                float tagHalfWidth = selectedTag.rect.width * 0.5f;
+                Vector3 tagPointInButton = new Vector3(
+                    buttonRect.rect.xMin - tagHalfWidth - selectedTagSpacing,
+                    buttonRect.rect.center.y,
+                    0f);
+                selectedTag.position = buttonRect.TransformPoint(tagPointInButton);
+                selectedTag.rotation = buttonRect.rotation * selectedTagRotationOffset;
             }
         }
     }
@@ -885,50 +881,6 @@ public sealed class MainMenuController : MonoBehaviour
         }
 
         return -1;
-    }
-
-    private static RectTransform GetMainActionAnchor(Button button)
-    {
-        if (button != null && button.transform.childCount > 0)
-        {
-            RectTransform child = button.transform.GetChild(0) as RectTransform;
-            if (child != null)
-            {
-                return child;
-            }
-        }
-
-        return button != null ? button.transform as RectTransform : null;
-    }
-
-    private Vector2 GetMainActionTagOffset(Button button)
-    {
-        if (button == startButton)
-        {
-            return startTagOffset;
-        }
-
-        if (button == continueButton)
-        {
-            return continueTagOffset;
-        }
-
-        if (button == settingsButton)
-        {
-            return settingsTagOffset;
-        }
-
-        if (button == statsButton)
-        {
-            return statsTagOffset;
-        }
-
-        if (button == exitButton)
-        {
-            return exitTagOffset;
-        }
-
-        return Vector2.zero;
     }
 
     private void SelectMainAction(Button button)
