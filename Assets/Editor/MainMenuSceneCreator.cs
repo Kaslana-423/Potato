@@ -416,6 +416,28 @@ public static class MainMenuSceneCreator
             "全屏显示",
             new Vector2(0.08f, 0.27f),
             new Vector2(0.92f, 0.41f));
+        fullscreen.gameObject.SetActive(false);
+
+        TMP_Text resolutionLabel = CreateText(
+            "ResolutionLabelText",
+            modal.transform,
+            "分辨率",
+            new Vector2(0.08f, 0.27f),
+            new Vector2(0.37f, 0.41f),
+            Vector2.zero,
+            Vector2.zero,
+            25f,
+            TextAlignmentOptions.Left,
+            Color.white,
+            FontStyles.Normal);
+        TMP_Dropdown resolutionDropdown = ResolutionDropdownSetting.CreateSceneDropdown(
+            modal.transform,
+            resolutionLabel.font);
+        RectTransform resolutionRect = resolutionDropdown.GetComponent<RectTransform>();
+        resolutionRect.anchorMin = new Vector2(0.38f, 0.285f);
+        resolutionRect.anchorMax = new Vector2(0.92f, 0.395f);
+        resolutionRect.offsetMin = Vector2.zero;
+        resolutionRect.offsetMax = Vector2.zero;
 
         Button back = CreateAnchoredButton(
             "SettingsBackButton",
@@ -474,10 +496,7 @@ public static class MainMenuSceneCreator
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
 
         CanvasScaler scaler = canvasObject.AddComponent<CanvasScaler>();
-        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1920f, 1080f);
-        scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
-        scaler.matchWidthOrHeight = 0.5f;
+        ResponsiveUiLayout.ConfigureCanvasScaler(scaler);
 
         canvasObject.AddComponent<GraphicRaycaster>();
         return canvas;

@@ -371,16 +371,18 @@ public sealed class GameplayPauseController : MonoBehaviour
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
         canvas.sortingOrder = 250;
         CanvasScaler scaler = canvasObject.GetComponent<CanvasScaler>();
-        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1920f, 1080f);
-        scaler.matchWidthOrHeight = 0.5f;
+        ResponsiveUiLayout.ConfigureCanvasScaler(scaler);
 
         windowRoot = CreateUiObject("PauseWindow", canvasObject.transform);
         Stretch(windowRoot.GetComponent<RectTransform>());
         Image dimmer = windowRoot.AddComponent<Image>();
         dimmer.color = new Color(0.01f, 0.012f, 0.018f, 0.82f);
 
-        mainPanel = CreatePanel("PauseMainPanel", windowRoot.transform, new Vector2(620f, 650f));
+        mainPanel = CreatePanel(
+            "PauseMainPanel",
+            windowRoot.transform,
+            new Vector2(0.3385f, 0.1991f),
+            new Vector2(0.6615f, 0.8009f));
         TMP_Text title = CreateText("Title", mainPanel.transform, font, 54f, FontStyles.Bold);
         SetRect(title.rectTransform, new Vector2(0.08f, 0.79f), new Vector2(0.92f, 0.94f));
         title.text = "游戏暂停";
@@ -422,7 +424,11 @@ public sealed class GameplayPauseController : MonoBehaviour
 
     private void BuildSettingsPanel(Transform parent, TMP_FontAsset font)
     {
-        settingsPanel = CreatePanel("PauseSettingsPanel", parent, new Vector2(680f, 650f));
+        settingsPanel = CreatePanel(
+            "PauseSettingsPanel",
+            parent,
+            new Vector2(0.3229f, 0.1991f),
+            new Vector2(0.6771f, 0.8009f));
 
         TMP_Text title = CreateText("Title", settingsPanel.transform, font, 48f, FontStyles.Bold);
         SetRect(title.rectTransform, new Vector2(0.08f, 0.81f), new Vector2(0.92f, 0.94f));
@@ -443,6 +449,18 @@ public sealed class GameplayPauseController : MonoBehaviour
 
         fullscreenToggle = CreateToggle("FullscreenToggle", settingsPanel.transform, font, "全屏");
         SetRect(fullscreenToggle.GetComponent<RectTransform>(), new Vector2(0.18f, 0.43f), new Vector2(0.82f, 0.55f));
+        fullscreenToggle.gameObject.SetActive(false);
+
+        TMP_Text resolutionLabel = CreateText("ResolutionLabel", settingsPanel.transform, font, 26f, FontStyles.Bold);
+        SetRect(resolutionLabel.rectTransform, new Vector2(0.12f, 0.43f), new Vector2(0.42f, 0.55f));
+        resolutionLabel.text = "分辨率";
+        resolutionLabel.alignment = TextAlignmentOptions.MidlineLeft;
+
+        TMP_Dropdown resolutionDropdown = ResolutionDropdownSetting.CreateSceneDropdown(settingsPanel.transform, font);
+        SetRect(
+            resolutionDropdown.GetComponent<RectTransform>(),
+            new Vector2(0.43f, 0.445f),
+            new Vector2(0.88f, 0.535f));
 
         settingsBackButton = CreateButton(
             "SettingsBackButton",
@@ -456,10 +474,14 @@ public sealed class GameplayPauseController : MonoBehaviour
         settingsPanel.SetActive(false);
     }
 
-    private static GameObject CreatePanel(string objectName, Transform parent, Vector2 size)
+    private static GameObject CreatePanel(
+        string objectName,
+        Transform parent,
+        Vector2 anchorMin,
+        Vector2 anchorMax)
     {
         GameObject panel = CreateUiObject(objectName, parent);
-        Center(panel.GetComponent<RectTransform>(), size);
+        ResponsiveUiLayout.SetNormalizedRect(panel.GetComponent<RectTransform>(), anchorMin, anchorMax);
         Image image = panel.AddComponent<Image>();
         image.color = new Color(0.065f, 0.07f, 0.085f, 0.98f);
         return panel;
@@ -590,13 +612,5 @@ public sealed class GameplayPauseController : MonoBehaviour
         SetRect(rect, Vector2.zero, Vector2.one);
     }
 
-    private static void Center(RectTransform rect, Vector2 size)
-    {
-        rect.anchorMin = new Vector2(0.5f, 0.5f);
-        rect.anchorMax = new Vector2(0.5f, 0.5f);
-        rect.pivot = new Vector2(0.5f, 0.5f);
-        rect.anchoredPosition = Vector2.zero;
-        rect.sizeDelta = size;
-    }
 #endif
 }
