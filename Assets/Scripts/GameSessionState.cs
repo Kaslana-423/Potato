@@ -11,6 +11,7 @@ public static class GameSessionState
     private const string LegacyRunDataKey = "potato.session.run_data";
     private const string MasterVolumeKey = "potato.settings.master_volume";
     private const string FullscreenKey = "potato.settings.fullscreen";
+    private const string ResolutionModeKey = "potato.settings.resolution_mode";
     private const string RunSaveFileName = "run_save.json";
     private const string RunSaveBackupFileName = "run_save.backup.json";
     private const string RunSaveTemporaryFileName = "run_save.tmp";
@@ -30,7 +31,8 @@ public static class GameSessionState
         || TryMigrateLegacyFileSave(out _)
         || TryReadLegacySave(out _);
     public static float MasterVolume => Mathf.Clamp01(PlayerPrefs.GetFloat(MasterVolumeKey, 1f));
-    public static bool Fullscreen => PlayerPrefs.GetInt(FullscreenKey, Screen.fullScreen ? 1 : 0) == 1;
+    public static GameResolutionMode ResolutionMode => GetSavedResolutionMode();
+    public static bool Fullscreen => ResolutionMode == GameResolutionMode.Fullscreen;
     public static string CurrentCharacterId { get; private set; } = DefaultCharacterId;
     public static bool IsNewRunPendingInitialization { get; private set; }
 
@@ -311,14 +313,89 @@ public static class GameSessionState
 
     public static void SetFullscreen(bool fullscreen)
     {
-        Screen.fullScreen = fullscreen;
-        PlayerPrefs.SetInt(FullscreenKey, fullscreen ? 1 : 0);
+        SetResolutionMode(fullscreen ? GameResolutionMode.Fullscreen : GameResolutionMode.Window1920x1080);
+    }
+
+    public static void SetResolutionMode(GameResolutionMode mode)
+    {
+        GameResolutionMode validMode = SanitizeResolutionMode(mode);
+        ApplyResolutionMode(validMode);
+        PlayerPrefs.SetInt(ResolutionModeKey, (int)validMode);
+        PlayerPrefs.SetInt(FullscreenKey, validMode == GameResolutionMode.Fullscreen ? 1 : 0);
         PlayerPrefs.Save();
     }
 
     public static void ApplySettings()
     {
         AudioListener.volume = MasterVolume;
-        Screen.fullScreen = Fullscreen;
+        ApplyResolutionMode(ResolutionMode);
     }
+
+    private static GameResolutionMode GetSavedResolutionMode()
+    {
+        if (PlayerPrefs.HasKey(ResolutionModeKey))
+        {
+            return SanitizeResolutionMode((GameResolutionMode)PlayerPrefs.GetInt(ResolutionModeKey));
+        }
+
+        if (PlayerPrefs.HasKey(FullscreenKey)
+            && PlayerPrefs.GetInt(FullscreenKey, 0) == 1)
+        {
+            return GameResolutionMode.Fullscreen;
+        }
+
+        if (Screen.fullScreen)
+        {
+            return GameResolutionMode.Fullscreen;
+        }
+
+        if (Screen.width <= 960 && Screen.height <= 540)
+        {
+            return GameResolutionMode.Window960x540;
+        }
+
+        if (Screen.width <= 1280 && Screen.height <= 720)
+        {
+            return GameResolutionMode.Window1280x720;
+        }
+
+        return GameResolutionMode.Window1920x1080;
+    }
+
+    private static GameResolutionMode SanitizeResolutionMode(GameResolutionMode mode)
+    {
+        return mode >= GameResolutionMode.Window1920x1080 && mode <= GameResolutionMode.Fullscreen
+            ? mode
+            : GameResolutionMode.Window1920x1080;
+    }
+
+    private static void ApplyResolutionMode(GameResolutionMode mode)
+    {
+        switch (SanitizeResolutionMode(mode))
+        {
+            case GameResolutionMode.Window1280x720:
+                Screen.SetResolution(1280, 720, FullScreenMode.Windowed);
+                break;
+            case GameResolutionMode.Window960x540:
+                Screen.SetResolution(960, 540, FullScreenMode.Windowed);
+                break;
+            case GameResolutionMode.Fullscreen:
+                Screen.SetResolution(
+                    Mathf.Max(1, Display.main.systemWidth),
+                    Mathf.Max(1, Display.main.systemHeight),
+                    FullScreenMode.FullScreenWindow);
+                break;
+            default:
+                Screen.SetResolution(1920, 1080, FullScreenMode.Windowed);
+                break;
+        }
+    }
+}
+
+public enum GameResolutionMode
+{
+    Window1920x1080 = 0,
+    Window1280x720 = 1,
+    Window960x540 = 2,
+    Fullscreen = 3
 }

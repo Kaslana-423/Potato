@@ -234,9 +234,7 @@ public sealed class LevelUpRewardController : MonoBehaviour
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
         canvas.sortingOrder = 200;
         CanvasScaler scaler = canvasObject.GetComponent<CanvasScaler>();
-        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1920f, 1080f);
-        scaler.matchWidthOrHeight = 0.5f;
+        ResponsiveUiLayout.ConfigureCanvasScaler(scaler);
 
         windowRoot = CreateUiObject("LevelUpWindow", canvasObject.transform);
         Stretch(windowRoot.GetComponent<RectTransform>());
@@ -245,7 +243,10 @@ public sealed class LevelUpRewardController : MonoBehaviour
 
         GameObject panel = CreateUiObject("Panel", windowRoot.transform);
         RectTransform panelRect = panel.GetComponent<RectTransform>();
-        Center(panelRect, new Vector2(1760f, 820f));
+        ResponsiveUiLayout.SetNormalizedRect(
+            panelRect,
+            new Vector2(0.0417f, 0.1204f),
+            new Vector2(0.9583f, 0.8796f));
         Image panelImage = panel.AddComponent<Image>();
         panelImage.color = new Color(0.07f, 0.075f, 0.09f, 0.98f);
 
@@ -277,10 +278,7 @@ public sealed class LevelUpRewardController : MonoBehaviour
 
         GameObject rerollObject = CreateUiObject("RerollButton", panel.transform);
         RectTransform rerollRect = rerollObject.GetComponent<RectTransform>();
-        rerollRect.anchorMin = new Vector2(0.3825f, 0.04f);
-        rerollRect.anchorMax = new Vector2(0.3825f, 0.14f);
-        rerollRect.offsetMin = new Vector2(-145f, 0f);
-        rerollRect.offsetMax = new Vector2(145f, 0f);
+        SetRect(rerollRect, new Vector2(0.3001f, 0.04f), new Vector2(0.4649f, 0.14f));
         Image rerollImage = rerollObject.AddComponent<Image>();
         rerollImage.color = new Color(0.15f, 0.16f, 0.2f, 1f);
         rerollButton = rerollObject.AddComponent<Button>();
@@ -485,12 +483,4 @@ public sealed class LevelUpRewardController : MonoBehaviour
         SetRect(rect, Vector2.zero, Vector2.one);
     }
 
-    private static void Center(RectTransform rect, Vector2 size)
-    {
-        rect.anchorMin = new Vector2(0.5f, 0.5f);
-        rect.anchorMax = new Vector2(0.5f, 0.5f);
-        rect.pivot = new Vector2(0.5f, 0.5f);
-        rect.anchoredPosition = Vector2.zero;
-        rect.sizeDelta = size;
-    }
 }

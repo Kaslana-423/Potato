@@ -225,9 +225,7 @@ public sealed class GameRunSettlementController : MonoBehaviour
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
         canvas.sortingOrder = 300;
         CanvasScaler scaler = canvasObject.GetComponent<CanvasScaler>();
-        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1920f, 1080f);
-        scaler.matchWidthOrHeight = 0.5f;
+        ResponsiveUiLayout.ConfigureCanvasScaler(scaler);
 
         windowRoot = CreateUiObject("SettlementWindow", canvasObject.transform);
         Stretch(windowRoot.GetComponent<RectTransform>());
@@ -236,7 +234,10 @@ public sealed class GameRunSettlementController : MonoBehaviour
         dimmer.color = new Color(0.01f, 0.012f, 0.018f, 0.94f);
 
         GameObject panel = CreateUiObject("Panel", windowRoot.transform);
-        Center(panel.GetComponent<RectTransform>(), new Vector2(760f, 760f));
+        ResponsiveUiLayout.SetNormalizedRect(
+            panel.GetComponent<RectTransform>(),
+            new Vector2(0.3021f, 0.1481f),
+            new Vector2(0.6979f, 0.8519f));
         Image panelImage = panel.AddComponent<Image>();
         panelImage.color = new Color(0.065f, 0.07f, 0.085f, 1f);
 
@@ -349,12 +350,4 @@ public sealed class GameRunSettlementController : MonoBehaviour
         SetRect(rect, Vector2.zero, Vector2.one);
     }
 
-    private static void Center(RectTransform rect, Vector2 size)
-    {
-        rect.anchorMin = new Vector2(0.5f, 0.5f);
-        rect.anchorMax = new Vector2(0.5f, 0.5f);
-        rect.pivot = new Vector2(0.5f, 0.5f);
-        rect.anchoredPosition = Vector2.zero;
-        rect.sizeDelta = size;
-    }
 }
