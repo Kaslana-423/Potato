@@ -2098,11 +2098,11 @@ MonoBehaviour:
   exitButton: {fileID: 1717988402}
   selectedTag: {fileID: 1681910673}
   selectedTagVerticalAdjustment: 0
-  startTagOffset: {x: -91, y: 137}
-  continueTagOffset: {x: -67, y: 140}
-  settingsTagOffset: {x: -65, y: 137}
-  statsTagOffset: {x: -2, y: 144}
-  exitTagOffset: {x: 20, y: 143}
+  startTagOffset: {x: 0, y: 0}
+  continueTagOffset: {x: 0, y: 0}
+  settingsTagOffset: {x: 0, y: 0}
+  statsTagOffset: {x: 0, y: 0}
+  exitTagOffset: {x: 0, y: 0}
   settingsPanel: {fileID: 1321415782}
   volumeSlider: {fileID: 1483657754}
   volumeValueText: {fileID: 1694424185}
@@ -2166,7 +2166,7 @@ MonoBehaviour:
   characterSelectionStatusText: {fileID: 0}
   characterStartButton: {fileID: 1822167763}
   characterBackButton: {fileID: 1476250777}
-  characterPortraitImage: {fileID: 1570193595}
+  characterPortraitImage: {fileID: 1843262638}
   characterNameText: {fileID: 1090121905}
   characterTypeText: {fileID: 1066160871}
   characterWeaponText: {fileID: 2085738462}
@@ -2186,8 +2186,8 @@ MonoBehaviour:
   - {fileID: 1383655588}
   - {fileID: 548577766}
   - {fileID: 822223703}
-  selectedCharacterPageDotSprite: {fileID: -1824034566, guid: a393c261077b08c4a821ee825a5e3c25, type: 3}
-  unselectedCharacterPageDotSprite: {fileID: 21300000, guid: f8608c0ef3188d04c9a862e2d0acc008, type: 3}
+  selectedCharacterPageDotSprite: {fileID: 0}
+  unselectedCharacterPageDotSprite: {fileID: 0}
   characterPageDotSpacing: 38
 --- !u!1 &355845012
 GameObject:
@@ -4437,7 +4437,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   route: 4
   contentRoot: {fileID: 786990157}
-  initialSelection: {fileID: 1822167763}
+  initialSelection: {fileID: 0}
 --- !u!114 &786990161
 MonoBehaviour:
   m_ObjectHideFlags: 0
