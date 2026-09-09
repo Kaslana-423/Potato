@@ -85,6 +85,7 @@ public sealed class MainMenuController : MonoBehaviour
     {
         AutoBindReferences();
         ConfigureNavigation();
+        SteppedVolumeSlider.Configure(volumeSlider);
         BindActions();
         GameSessionState.ApplySettings();
         SyncSettingsUi();
@@ -495,9 +496,15 @@ public sealed class MainMenuController : MonoBehaviour
 
     private void SyncSettingsUi()
     {
+        float normalizedVolume = SteppedVolumeSlider.SnapNormalizedValue(GameSessionState.MasterVolume);
+        if (!Mathf.Approximately(normalizedVolume, GameSessionState.MasterVolume))
+        {
+            GameSessionState.SetMasterVolume(normalizedVolume);
+        }
+
         if (volumeSlider != null)
         {
-            volumeSlider.SetValueWithoutNotify(GameSessionState.MasterVolume);
+            SteppedVolumeSlider.SetNormalizedValueWithoutNotify(volumeSlider, normalizedVolume);
         }
 
         if (fullscreenToggle != null)
@@ -505,13 +512,14 @@ public sealed class MainMenuController : MonoBehaviour
             fullscreenToggle.SetIsOnWithoutNotify(GameSessionState.Fullscreen);
         }
 
-        UpdateVolumeValue(GameSessionState.MasterVolume);
+        UpdateVolumeValue(normalizedVolume);
     }
 
     private void HandleVolumeChanged(float value)
     {
-        GameSessionState.SetMasterVolume(value);
-        UpdateVolumeValue(value);
+        float normalizedValue = SteppedVolumeSlider.ToNormalizedValue(value);
+        GameSessionState.SetMasterVolume(normalizedValue);
+        UpdateVolumeValue(normalizedValue);
     }
 
     private void UpdateVolumeValue(float value)

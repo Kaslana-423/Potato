@@ -399,7 +399,7 @@ public static class MainMenuSceneCreator
             "VolumeValueText",
             modal.transform,
             "100%",
-            new Vector2(0.7f, 0.58f),
+            new Vector2(0.74f, 0.58f),
             new Vector2(0.92f, 0.7f),
             Vector2.zero,
             Vector2.zero,
@@ -408,7 +408,7 @@ public static class MainMenuSceneCreator
             Accent,
             FontStyles.Bold);
 
-        Slider volume = CreateSlider("VolumeSlider", modal.transform, new Vector2(0.08f, 0.48f), new Vector2(0.92f, 0.57f));
+        Slider volume = CreateSlider("VolumeSlider", modal.transform, new Vector2(0.42f, 0.58f), new Vector2(0.72f, 0.7f));
 
         Toggle fullscreen = CreateToggle(
             "FullscreenToggle",
@@ -615,8 +615,8 @@ public static class MainMenuSceneCreator
         GameObject backgroundObject = CreateUiObject(
             "Background",
             sliderObject.transform,
-            new Vector2(0f, 0.35f),
-            new Vector2(1f, 0.65f),
+            new Vector2(0.02f, 0.18f),
+            new Vector2(0.98f, 0.82f),
             Vector2.zero,
             Vector2.zero);
         Image backgroundImage = backgroundObject.AddComponent<Image>();
@@ -625,10 +625,10 @@ public static class MainMenuSceneCreator
         GameObject fillArea = CreateUiObject(
             "Fill Area",
             sliderObject.transform,
-            new Vector2(0f, 0.35f),
-            new Vector2(1f, 0.65f),
-            new Vector2(5f, 0f),
-            new Vector2(-12f, 0f));
+            new Vector2(0.02f, 0.18f),
+            new Vector2(0.98f, 0.82f),
+            Vector2.zero,
+            Vector2.zero);
         GameObject fillObject = CreateUiObject("Fill", fillArea.transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
         Image fillImage = fillObject.AddComponent<Image>();
         fillImage.color = Accent;
@@ -638,24 +638,42 @@ public static class MainMenuSceneCreator
             sliderObject.transform,
             Vector2.zero,
             Vector2.one,
-            new Vector2(10f, 0f),
-            new Vector2(-10f, 0f));
+            new Vector2(5f, 0f),
+            new Vector2(-5f, 0f));
         GameObject handleObject = CreateUiObject(
             "Handle",
             handleArea.transform,
             new Vector2(0f, 0.5f),
             new Vector2(0f, 0.5f),
             Vector2.zero,
-            new Vector2(28f, 42f));
+            new Vector2(10f, 46f));
         Image handleImage = handleObject.AddComponent<Image>();
-        handleImage.color = Color.white;
+        handleImage.color = Color.clear;
 
         slider.fillRect = fillObject.GetComponent<RectTransform>();
         slider.handleRect = handleObject.GetComponent<RectTransform>();
         slider.targetGraphic = handleImage;
         slider.minValue = 0f;
-        slider.maxValue = 1f;
-        slider.value = 1f;
+        slider.maxValue = SteppedVolumeSlider.StepCount;
+        slider.wholeNumbers = true;
+        slider.direction = Slider.Direction.LeftToRight;
+        slider.value = SteppedVolumeSlider.StepCount;
+
+        for (int i = 1; i < SteppedVolumeSlider.StepCount; i++)
+        {
+            float anchorX = 0.02f + 0.96f * i / SteppedVolumeSlider.StepCount;
+            GameObject divider = CreateUiObject(
+                $"Divider{i:00}",
+                sliderObject.transform,
+                new Vector2(anchorX, 0.1f),
+                new Vector2(anchorX, 0.9f),
+                Vector2.zero,
+                new Vector2(5f, 0f));
+            Image dividerImage = divider.AddComponent<Image>();
+            dividerImage.color = new Color(0.08f, 0.07f, 0.06f, 1f);
+            dividerImage.raycastTarget = false;
+        }
+
         return slider;
     }
 

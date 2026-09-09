@@ -38,6 +38,7 @@ public sealed class GameplayPauseController : MonoBehaviour
             return;
         }
 
+        SteppedVolumeSlider.Configure(volumeSlider);
         BindActions();
         ConfigureNavigation();
         GameSessionState.ApplySettings();
@@ -179,9 +180,15 @@ public sealed class GameplayPauseController : MonoBehaviour
 
     private void SyncSettingsUi()
     {
+        float normalizedVolume = SteppedVolumeSlider.SnapNormalizedValue(GameSessionState.MasterVolume);
+        if (!Mathf.Approximately(normalizedVolume, GameSessionState.MasterVolume))
+        {
+            GameSessionState.SetMasterVolume(normalizedVolume);
+        }
+
         if (volumeSlider != null)
         {
-            volumeSlider.SetValueWithoutNotify(GameSessionState.MasterVolume);
+            SteppedVolumeSlider.SetNormalizedValueWithoutNotify(volumeSlider, normalizedVolume);
         }
 
         if (fullscreenToggle != null)
@@ -189,13 +196,14 @@ public sealed class GameplayPauseController : MonoBehaviour
             fullscreenToggle.SetIsOnWithoutNotify(GameSessionState.Fullscreen);
         }
 
-        UpdateVolumeValue(GameSessionState.MasterVolume);
+        UpdateVolumeValue(normalizedVolume);
     }
 
     private void HandleVolumeChanged(float value)
     {
-        GameSessionState.SetMasterVolume(value);
-        UpdateVolumeValue(value);
+        float normalizedValue = SteppedVolumeSlider.ToNormalizedValue(value);
+        GameSessionState.SetMasterVolume(normalizedValue);
+        UpdateVolumeValue(normalizedValue);
     }
 
     private void UpdateVolumeValue(float value)
@@ -441,10 +449,10 @@ public sealed class GameplayPauseController : MonoBehaviour
         volumeLabel.alignment = TextAlignmentOptions.MidlineLeft;
 
         volumeSlider = CreateSlider("VolumeSlider", settingsPanel.transform);
-        SetRect(volumeSlider.GetComponent<RectTransform>(), new Vector2(0.39f, 0.64f), new Vector2(0.76f, 0.71f));
+        SetRect(volumeSlider.GetComponent<RectTransform>(), new Vector2(0.43f, 0.63f), new Vector2(0.74f, 0.72f));
 
         volumeValueText = CreateText("VolumeValue", settingsPanel.transform, font, 24f, FontStyles.Bold);
-        SetRect(volumeValueText.rectTransform, new Vector2(0.77f, 0.63f), new Vector2(0.89f, 0.72f));
+        SetRect(volumeValueText.rectTransform, new Vector2(0.76f, 0.63f), new Vector2(0.9f, 0.72f));
         volumeValueText.alignment = TextAlignmentOptions.Center;
 
         fullscreenToggle = CreateToggle("FullscreenToggle", settingsPanel.transform, font, "全屏");
@@ -514,10 +522,10 @@ public sealed class GameplayPauseController : MonoBehaviour
     {
         GameObject sliderObject = CreateUiObject(objectName, parent);
         Image background = sliderObject.AddComponent<Image>();
-        background.color = new Color(0.13f, 0.14f, 0.18f, 1f);
+        background.color = new Color(0.28f, 0.29f, 0.32f, 1f);
 
         GameObject fillObject = CreateUiObject("Fill", sliderObject.transform);
-        SetRect(fillObject.GetComponent<RectTransform>(), new Vector2(0f, 0.15f), new Vector2(1f, 0.85f));
+        SetRect(fillObject.GetComponent<RectTransform>(), new Vector2(0.02f, 0.18f), new Vector2(0.98f, 0.82f));
         Image fill = fillObject.AddComponent<Image>();
         fill.color = new Color(0.3f, 0.72f, 0.4f, 1f);
 
@@ -525,17 +533,33 @@ public sealed class GameplayPauseController : MonoBehaviour
         RectTransform handleRect = handleObject.GetComponent<RectTransform>();
         handleRect.anchorMin = new Vector2(0f, 0.5f);
         handleRect.anchorMax = new Vector2(0f, 0.5f);
-        handleRect.sizeDelta = new Vector2(30f, 46f);
+        handleRect.sizeDelta = new Vector2(10f, 46f);
         Image handle = handleObject.AddComponent<Image>();
-        handle.color = Color.white;
+        handle.color = Color.clear;
 
         Slider slider = sliderObject.AddComponent<Slider>();
         slider.minValue = 0f;
-        slider.maxValue = 1f;
+        slider.maxValue = SteppedVolumeSlider.StepCount;
+        slider.wholeNumbers = true;
         slider.fillRect = fillObject.GetComponent<RectTransform>();
         slider.handleRect = handleRect;
         slider.targetGraphic = handle;
         slider.direction = Slider.Direction.LeftToRight;
+        slider.value = SteppedVolumeSlider.StepCount;
+
+        for (int i = 1; i < SteppedVolumeSlider.StepCount; i++)
+        {
+            float anchorX = 0.02f + 0.96f * i / SteppedVolumeSlider.StepCount;
+            GameObject dividerObject = CreateUiObject($"Divider{i:00}", sliderObject.transform);
+            RectTransform dividerRect = dividerObject.GetComponent<RectTransform>();
+            dividerRect.anchorMin = new Vector2(anchorX, 0.1f);
+            dividerRect.anchorMax = new Vector2(anchorX, 0.9f);
+            dividerRect.sizeDelta = new Vector2(5f, 0f);
+            Image divider = dividerObject.AddComponent<Image>();
+            divider.color = new Color(0.06f, 0.065f, 0.08f, 1f);
+            divider.raycastTarget = false;
+        }
+
         return slider;
     }
 

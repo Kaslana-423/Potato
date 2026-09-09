@@ -196,6 +196,7 @@ public static class ShopItemPrefabCreator
 
         text.text = value;
         text.fontSize = fontSize;
+        text.fontSizeMax = 100f;
         text.alignment = alignment;
         text.color = color;
         text.enableWordWrapping = true;
