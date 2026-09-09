@@ -74,8 +74,9 @@ public sealed class ShopManager : MonoBehaviour
 
     [Header("Offers")]
     [SerializeField, Min(1)] private int offerCount = 4;
-    [SerializeField] private ShopOfferView shopItemPrefab = null;
+    [SerializeField] private ShopOfferView[] offerViews = Array.Empty<ShopOfferView>();
     [SerializeField] private Transform shopItemContainer;
+    [SerializeField] private ShopContentDetailPopup detailPopup;
 
     [Header("Optional UI References")]
     [SerializeField] private Button refreshButton;
@@ -114,7 +115,6 @@ public sealed class ShopManager : MonoBehaviour
     [SerializeField, Min(0f)] private float luckTier3WeightPerPoint = 0.08f;
     [SerializeField, Min(0f)] private float luckTier4WeightPerPoint = 0.05f;
 
-    private ShopOfferView[] offerViews = Array.Empty<ShopOfferView>();
     private readonly List<ShopContentDefinition> currentOffers = new List<ShopContentDefinition>();
     private readonly Dictionary<string, int> purchaseCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
     private Button boundRefreshButton;
@@ -257,6 +257,7 @@ public sealed class ShopManager : MonoBehaviour
     private void OnDisable()
     {
         UnbindAffordabilityWallet();
+        detailPopup?.Hide();
     }
 
     private void OnValidate()
@@ -277,6 +278,13 @@ public sealed class ShopManager : MonoBehaviour
     private void Start()
     {
         EnsureUi();
+        if (shopCanvasGroup == null || detailPopup == null || offerViews.Length != offerCount
+            || Array.Exists(offerViews, view => view == null || !view.HasSceneReferences))
+        {
+            Debug.LogError("Shop UI must have a CanvasGroup, detail panel and fully bound scene offer cards.", this);
+            enabled = false;
+            return;
+        }
         SetShopVisible(startOpen);
 
         if (startOpen && refreshOnStart)
@@ -305,10 +313,6 @@ public sealed class ShopManager : MonoBehaviour
         if (shopCanvasGroup == null && shopWindowRoot != null)
         {
             shopCanvasGroup = shopWindowRoot.GetComponent<CanvasGroup>();
-            if (shopCanvasGroup == null)
-            {
-                shopCanvasGroup = shopWindowRoot.AddComponent<CanvasGroup>();
-            }
         }
 
         if (shopItemContainer == null)
@@ -330,12 +334,12 @@ public sealed class ShopManager : MonoBehaviour
 
         if (relicBag == null)
         {
-            relicBag = FindOrAddComponent<RelicBag>("RelicBag");
+            relicBag = FindComponent<RelicBag>("RelicBag");
         }
 
         if (weaponBag == null)
         {
-            weaponBag = FindOrAddComponent<WeaponBag>("WeaponBag");
+            weaponBag = FindComponent<WeaponBag>("WeaponBag");
         }
 
         if (playerWeaponEquipment == null)
@@ -380,10 +384,6 @@ public sealed class ShopManager : MonoBehaviour
         if (currencyDisplay == null)
         {
             currencyDisplay = GetComponent<PlayerCurrencyDisplay>();
-            if (currencyDisplay == null)
-            {
-                currencyDisplay = gameObject.AddComponent<PlayerCurrencyDisplay>();
-            }
         }
 
         if (waveSource == null)
@@ -391,8 +391,8 @@ public sealed class ShopManager : MonoBehaviour
             waveSource = FindObjectOfType<EnemySpawner>(true);
         }
 
-        currencyDisplay.AutoBindReferences();
-        if (Application.isPlaying)
+        currencyDisplay?.AutoBindReferences();
+        if (Application.isPlaying && currencyDisplay != null)
         {
             currencyDisplay.BindWallet(playerWallet != null ? playerWallet : PlayerWallet.GetOrCreate());
         }
@@ -452,6 +452,11 @@ public sealed class ShopManager : MonoBehaviour
     public void TryPaidRefresh()
     {
         EnsureUi();
+        if (offerViews.Length != offerCount || Array.Exists(offerViews, view => view == null))
+        {
+            Debug.LogError("Cannot refresh: shop offer objects are missing from the scene.", this);
+            return;
+        }
 
         PlayerWallet wallet = ResolvePlayerWallet();
         bool usesFreeRefresh = FreeRefreshesRemaining > 0;
@@ -559,6 +564,7 @@ public sealed class ShopManager : MonoBehaviour
 
     private void GenerateOffersPreservingLocks()
     {
+        detailPopup?.Hide();
         var lockedOffers = new Dictionary<int, ShopContentDefinition>();
         int previousSlotCount = Mathf.Min(currentOffers.Count, offerViews.Length);
         for (int index = 0; index < previousSlotCount; index++)
@@ -637,22 +643,11 @@ public sealed class ShopManager : MonoBehaviour
 
     private void EnsureOfferViews()
     {
-        var views = offerViews == null
-            ? new List<ShopOfferView>()
-            : offerViews.Where(view => view != null).ToList();
-
-        if (shopItemPrefab != null)
+        if (offerViews == null || offerViews.Length == 0)
         {
             Transform parent = shopItemContainer != null ? shopItemContainer : transform;
-            while (views.Count < offerCount)
-            {
-                ShopOfferView view = Instantiate(shopItemPrefab, parent);
-                view.name = $"{shopItemPrefab.name} {views.Count + 1}";
-                views.Add(view);
-            }
+            offerViews = parent.GetComponentsInChildren<ShopOfferView>(true);
         }
-
-        offerViews = views.ToArray();
     }
 
     private bool HasOfferViews()
@@ -663,6 +658,10 @@ public sealed class ShopManager : MonoBehaviour
     private void SetShopVisible(bool visible)
     {
         IsOpen = visible;
+        if (!visible)
+        {
+            detailPopup?.Hide();
+        }
 
         GameObject windowRoot = shopWindowRoot != null ? shopWindowRoot : gameObject;
         if (shopCanvasGroup != null)
@@ -841,7 +840,7 @@ public sealed class ShopManager : MonoBehaviour
             return;
         }
 
-        SetStatus($"{content.LocalizedDisplayName}（{content.RarityLabel}）\n{content.BuildDetails()}");
+        detailPopup?.Show(content);
     }
 
     private void TryPurchaseOffer(ShopOfferView offerView, ShopContentDefinition content)
@@ -1307,15 +1306,4 @@ public sealed class ShopManager : MonoBehaviour
         return null;
     }
 
-    private T FindOrAddComponent<T>(params string[] names) where T : Component
-    {
-        T existing = FindComponent<T>(names);
-        if (existing != null)
-        {
-            return existing;
-        }
-
-        Transform child = FindDescendant(names);
-        return child != null ? child.gameObject.AddComponent<T>() : null;
-    }
 }

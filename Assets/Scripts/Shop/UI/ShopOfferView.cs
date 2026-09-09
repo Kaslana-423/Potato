@@ -30,11 +30,13 @@ public sealed class ShopOfferView : MonoBehaviour
     private Action<ShopOfferView, bool> lockAction;
 
     public bool IsLocked { get; private set; }
+    public bool HasSceneReferences => background != null && icon != null && nameText != null
+        && kindText != null && descriptionText != null && statsText != null && priceText != null
+        && inspectButton != null && buyButton != null && lockButton != null && lockText != null;
 
     private void Awake()
     {
         AutoBindReferences();
-        EnsureLockButton();
         BindInspectButton();
         BindBuyButton();
         BindLockButton();
@@ -133,55 +135,6 @@ public sealed class ShopOfferView : MonoBehaviour
         {
             lockText = lockButton.GetComponentInChildren<TMP_Text>(true);
         }
-    }
-
-    public void EnsureLockButton()
-    {
-        AutoBindReferences();
-        if (lockButton != null)
-        {
-            return;
-        }
-
-        GameObject buttonObject = new GameObject("LockButton", typeof(RectTransform), typeof(Image), typeof(Button));
-        buttonObject.layer = gameObject.layer;
-        buttonObject.transform.SetParent(transform, false);
-
-        RectTransform buttonRect = buttonObject.GetComponent<RectTransform>();
-        buttonRect.anchorMin = Vector2.one;
-        buttonRect.anchorMax = Vector2.one;
-        buttonRect.pivot = Vector2.one;
-        buttonRect.anchoredPosition = new Vector2(-12f, -12f);
-        buttonRect.sizeDelta = new Vector2(84f, 38f);
-
-        Image buttonImage = buttonObject.GetComponent<Image>();
-        buttonImage.color = new Color(0.16f, 0.16f, 0.16f, 0.96f);
-
-        lockButton = buttonObject.GetComponent<Button>();
-        lockButton.targetGraphic = buttonImage;
-
-        GameObject textObject = new GameObject("LockText", typeof(RectTransform), typeof(TextMeshProUGUI));
-        textObject.layer = gameObject.layer;
-        textObject.transform.SetParent(buttonObject.transform, false);
-
-        RectTransform textRect = textObject.GetComponent<RectTransform>();
-        textRect.anchorMin = Vector2.zero;
-        textRect.anchorMax = Vector2.one;
-        textRect.offsetMin = Vector2.zero;
-        textRect.offsetMax = Vector2.zero;
-
-        lockText = textObject.GetComponent<TextMeshProUGUI>();
-        lockText.text = "锁定";
-        lockText.fontSize = 18f;
-        lockText.alignment = TextAlignmentOptions.Center;
-        lockText.color = Color.white;
-        if (nameText != null)
-        {
-            lockText.font = nameText.font;
-        }
-
-        BindLockButton();
-        UpdateLockVisual();
     }
 
     public void Configure(
@@ -509,13 +462,13 @@ public sealed class ShopOfferView : MonoBehaviour
         switch (rarity)
         {
             case ShopRarity.Tier2:
-                return new Color(0.055f, 0.13f, 0.085f, 0.98f);
+                return new Color(0.84f, 1f, 0.83f, 1f);
             case ShopRarity.Tier3:
-                return new Color(0.06f, 0.085f, 0.16f, 0.98f);
+                return new Color(0.82f, 0.90f, 1f, 1f);
             case ShopRarity.Tier4:
-                return new Color(0.15f, 0.065f, 0.18f, 0.98f);
+                return new Color(0.95f, 0.82f, 1f, 1f);
             default:
-                return new Color(0.035f, 0.035f, 0.035f, 0.98f);
+                return Color.white;
         }
     }
 

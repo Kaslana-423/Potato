@@ -127,8 +127,8 @@ public static class ShopItemPrefabCreator
                 Color.white);
 
             ShopOfferView view = root.AddComponent<ShopOfferView>();
+            CreateLockButton(root.transform);
             view.AutoBindReferences();
-            view.EnsureLockButton();
 
             GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, PrefabPath);
             AssetDatabase.SaveAssets();
@@ -141,6 +141,20 @@ public static class ShopItemPrefabCreator
         {
             Object.DestroyImmediate(root);
         }
+    }
+
+    private static void CreateLockButton(Transform parent)
+    {
+        GameObject buttonObject = CreateUiObject("LockButton", parent, Vector2.zero, new Vector2(84f, 38f));
+        RectTransform rect = buttonObject.GetComponent<RectTransform>();
+        rect.anchorMin = rect.anchorMax = rect.pivot = Vector2.one;
+        rect.anchoredPosition = new Vector2(-12f, -12f);
+        Image image = buttonObject.AddComponent<Image>();
+        image.color = new Color(0.16f, 0.16f, 0.16f, 0.96f);
+        buttonObject.AddComponent<Button>().targetGraphic = image;
+        TMP_Text text = CreateText("LockText", buttonObject.transform, "锁定", Vector2.zero,
+            new Vector2(84f, 38f), 18, TextAlignmentOptions.Center, Color.white);
+        text.raycastTarget = false;
     }
 
     private static GameObject CreateUiObject(

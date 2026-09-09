@@ -55,13 +55,19 @@ ShopItem                 Image, Button, ShopOfferView
 然后配置商店界面：
 
 1. 在商店根对象添加 `ShopManager`。
-2. 创建空 UI 对象并命名为 `ShopItemContainer`，它是卡片生成位置。
-3. 如果卡片需要横向排列，在容器上添加 `HorizontalLayoutGroup`。
-4. 将 `ShopItem.prefab` 拖到 `ShopManager > Shop Item Prefab`。
+2. 创建空 UI 对象并命名为 `ShopItemContainer`，在编辑模式下放好 4 张商品卡片。
+3. 每张卡片预先配置图标、名称、类型、限购、描述、属性、价格、查看、购买和锁定按钮。
+4. 将这 4 个 `ShopOfferView` 按显示顺序拖到 `ShopManager > Offer Views`，数量与 `Offer Count` 一致。
 5. 将刷新按钮命名为 `RefreshButton`，或拖到 `ShopManager > Refresh Button`。
 6. `Start Open` 控制商店开局是否显示。
 
-`ShopManager` 会根据 `Offer Count` 自动实例化并复用卡片。
+`SampleScene` 已配置 `Shop/ShopItemContainer/ShopItem 1` 到 `ShopItem 4`，运行时只绑定数据和控制显隐。
+`Shop/ShopContentDetailPopup` 是商品和背包共用的描述对象；其图标、标题、类型、详情和关闭按钮均已绑定。
+在编辑模式中临时启用该对象即可调整描述布局，保存前保持禁用。
+
+商店根对象还需要预先配置 `CanvasGroup` 和 `PlayerCurrencyDisplay`。
+武器背包使用 6 个 `ShopBagSlotView`，道具背包使用 18 个固定格子及上一页、下一页按钮；
+购买、合成、翻页和读档都会复用这些对象，不创建或销毁 UI。翻页只影响显示，不改变存档中的物品列表。
 
 具体武器和道具脚本是普通 C# 数据定义，不需要挂到 GameObject 上。
 
