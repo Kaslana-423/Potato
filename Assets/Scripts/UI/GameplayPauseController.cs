@@ -438,25 +438,41 @@ public sealed class GameplayPauseController : MonoBehaviour
             new Vector2(0.3229f, 0.1991f),
             new Vector2(0.6771f, 0.8009f));
 
-        TMP_Text title = CreateText("Title", settingsPanel.transform, font, 48f, FontStyles.Bold);
-        SetRect(title.rectTransform, new Vector2(0.08f, 0.81f), new Vector2(0.92f, 0.94f));
-        title.text = "设置";
+        RectTransform settingsRect = settingsPanel.GetComponent<RectTransform>();
+        settingsRect.anchorMin = new Vector2(0.5f, 0.5f);
+        settingsRect.anchorMax = new Vector2(0.5f, 0.5f);
+        settingsRect.anchoredPosition = Vector2.zero;
+        settingsRect.sizeDelta = new Vector2(813.2203f, 623.634f);
+        settingsPanel.GetComponent<Image>().color = new Color(0.8078432f, 0.67058825f, 0.6039216f, 0.97f);
+        Outline outline = settingsPanel.AddComponent<Outline>();
+        outline.effectColor = new Color(0.25f, 0.34f, 0.42f, 0.85f);
+        outline.effectDistance = new Vector2(2f, -2f);
+
+        TMP_FontAsset settingsFont = UnityEditor.AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(
+            "Assets/TextMesh Pro/Fonts/bups 2.asset") ?? font;
+
+        TMP_Text title = CreateText("Title", settingsPanel.transform, settingsFont, 93.5f, FontStyles.Bold);
+        SetRect(title.rectTransform, new Vector2(0.08f, 0.79f), new Vector2(0.92f, 0.94f));
+        title.text = "SETTING";
+        title.color = Color.black;
         title.alignment = TextAlignmentOptions.Center;
 
-        TMP_Text volumeLabel = CreateText("VolumeLabel", settingsPanel.transform, font, 26f, FontStyles.Bold);
-        SetRect(volumeLabel.rectTransform, new Vector2(0.12f, 0.63f), new Vector2(0.42f, 0.72f));
-        volumeLabel.text = "主音量";
+        TMP_Text volumeLabel = CreateText("VolumeLabel", settingsPanel.transform, settingsFont, 74.8f, FontStyles.Bold);
+        SetRect(volumeLabel.rectTransform, new Vector2(0.08f, 0.58f), new Vector2(0.45f, 0.7f));
+        volumeLabel.text = "Volume";
+        volumeLabel.color = new Color(0.335849f, 0.012039822f, 0.10286256f, 1f);
         volumeLabel.alignment = TextAlignmentOptions.MidlineLeft;
 
         volumeSlider = CreateSlider("VolumeSlider", settingsPanel.transform);
-        SetRect(volumeSlider.GetComponent<RectTransform>(), new Vector2(0.43f, 0.63f), new Vector2(0.74f, 0.72f));
+        SetRect(volumeSlider.GetComponent<RectTransform>(), new Vector2(0.42f, 0.58f), new Vector2(0.72f, 0.7f));
 
-        volumeValueText = CreateText("VolumeValue", settingsPanel.transform, font, 24f, FontStyles.Bold);
-        SetRect(volumeValueText.rectTransform, new Vector2(0.76f, 0.63f), new Vector2(0.9f, 0.72f));
-        volumeValueText.alignment = TextAlignmentOptions.Center;
+        volumeValueText = CreateText("VolumeValue", settingsPanel.transform, settingsFont, 56f, FontStyles.Bold);
+        SetRect(volumeValueText.rectTransform, new Vector2(0.74f, 0.58f), new Vector2(0.92f, 0.7f));
+        volumeValueText.color = new Color(0.34117648f, 0.023529414f, 0.11764707f, 1f);
+        volumeValueText.alignment = TextAlignmentOptions.Right;
 
-        fullscreenToggle = CreateToggle("FullscreenToggle", settingsPanel.transform, font, "全屏");
-        SetRect(fullscreenToggle.GetComponent<RectTransform>(), new Vector2(0.18f, 0.43f), new Vector2(0.82f, 0.55f));
+        fullscreenToggle = CreateToggle("FullscreenToggle", settingsPanel.transform, settingsFont, "FULLSCREEN");
+        SetRect(fullscreenToggle.GetComponent<RectTransform>(), new Vector2(0.08f, 0.27f), new Vector2(0.92f, 0.41f));
         fullscreenToggle.gameObject.SetActive(false);
 
         TMP_Text resolutionLabel = CreateText("ResolutionLabel", settingsPanel.transform, font, 26f, FontStyles.Bold);
@@ -473,11 +489,14 @@ public sealed class GameplayPauseController : MonoBehaviour
         settingsBackButton = CreateButton(
             "SettingsBackButton",
             settingsPanel.transform,
-            font,
-            "返回",
-            new Vector2(0.18f, 0.16f),
-            new Vector2(0.82f, 0.29f),
-            new Color(0.23f, 0.27f, 0.35f, 1f));
+            settingsFont,
+            "BACK",
+            new Vector2(0.61f, 0.07f),
+            new Vector2(0.92f, 0.2f),
+            new Color(1f, 0.94700575f, 0.9037736f, 1f));
+        TMP_Text backText = settingsBackButton.GetComponentInChildren<TMP_Text>();
+        backText.fontSize = 72f;
+        backText.color = new Color(0.025f, 0.035f, 0.055f, 1f);
 
         settingsPanel.SetActive(false);
     }
@@ -521,15 +540,24 @@ public sealed class GameplayPauseController : MonoBehaviour
     private static Slider CreateSlider(string objectName, Transform parent)
     {
         GameObject sliderObject = CreateUiObject(objectName, parent);
-        Image background = sliderObject.AddComponent<Image>();
-        background.color = new Color(0.28f, 0.29f, 0.32f, 1f);
+        Image rootImage = sliderObject.AddComponent<Image>();
+        rootImage.color = Color.clear;
 
-        GameObject fillObject = CreateUiObject("Fill", sliderObject.transform);
-        SetRect(fillObject.GetComponent<RectTransform>(), new Vector2(0.02f, 0.18f), new Vector2(0.98f, 0.82f));
+        GameObject backgroundObject = CreateUiObject("Background", sliderObject.transform);
+        SetRect(backgroundObject.GetComponent<RectTransform>(), new Vector2(0.02f, 0.18f), new Vector2(0.98f, 0.82f));
+        Image background = backgroundObject.AddComponent<Image>();
+        background.color = new Color(1f, 0.94700575f, 0.9037736f, 1f);
+
+        GameObject fillArea = CreateUiObject("Fill Area", sliderObject.transform);
+        SetRect(fillArea.GetComponent<RectTransform>(), new Vector2(0.02f, 0.18f), new Vector2(0.98f, 0.82f));
+        GameObject fillObject = CreateUiObject("Fill", fillArea.transform);
+        SetRect(fillObject.GetComponent<RectTransform>(), Vector2.zero, Vector2.one);
         Image fill = fillObject.AddComponent<Image>();
-        fill.color = new Color(0.3f, 0.72f, 0.4f, 1f);
+        fill.color = new Color(0.335849f, 0.012039822f, 0.10286256f, 1f);
 
-        GameObject handleObject = CreateUiObject("Handle", sliderObject.transform);
+        GameObject handleArea = CreateUiObject("Handle Slide Area", sliderObject.transform);
+        SetRect(handleArea.GetComponent<RectTransform>(), Vector2.zero, Vector2.one);
+        GameObject handleObject = CreateUiObject("Handle", handleArea.transform);
         RectTransform handleRect = handleObject.GetComponent<RectTransform>();
         handleRect.anchorMin = new Vector2(0f, 0.5f);
         handleRect.anchorMax = new Vector2(0f, 0.5f);
@@ -556,7 +584,7 @@ public sealed class GameplayPauseController : MonoBehaviour
             dividerRect.anchorMax = new Vector2(anchorX, 0.9f);
             dividerRect.sizeDelta = new Vector2(5f, 0f);
             Image divider = dividerObject.AddComponent<Image>();
-            divider.color = new Color(0.06f, 0.065f, 0.08f, 1f);
+            divider.color = new Color(0.08f, 0.07f, 0.06f, 1f);
             divider.raycastTarget = false;
         }
 

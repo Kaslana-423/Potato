@@ -337,7 +337,7 @@ public sealed class MainMenuController : MonoBehaviour
 
     public void RequestExitGame()
     {
-        OpenConfirmation(ConfirmationAction.ExitGame, "确定退出游戏？", "退出游戏");
+        OpenConfirmation(ConfirmationAction.ExitGame);
     }
 
     public void ConfirmPendingAction()
@@ -374,13 +374,16 @@ public sealed class MainMenuController : MonoBehaviour
         selectionBeforeConfirmation = null;
     }
 
-    private void OpenConfirmation(ConfirmationAction action, string message, string confirmLabel)
+    private void OpenConfirmation(
+        ConfirmationAction action,
+        string message = null,
+        string confirmLabel = null)
     {
         selectionBeforeConfirmation = EventSystem.current != null
             ? EventSystem.current.currentSelectedGameObject
             : null;
         pendingConfirmation = action;
-        if (confirmationText != null)
+        if (!string.IsNullOrEmpty(message) && confirmationText != null)
         {
             confirmationText.text = message;
         }
@@ -388,7 +391,7 @@ public sealed class MainMenuController : MonoBehaviour
         TMP_Text confirmLabelText = confirmButton != null
             ? confirmButton.GetComponentInChildren<TMP_Text>(true)
             : null;
-        if (confirmLabelText != null)
+        if (!string.IsNullOrEmpty(confirmLabel) && confirmLabelText != null)
         {
             confirmLabelText.text = confirmLabel;
         }
