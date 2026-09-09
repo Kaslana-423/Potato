@@ -25,7 +25,7 @@ public abstract class ShopBagBase : MonoBehaviour
 
     protected virtual string MissingBagMessage => "背包未设置。";
 
-    private void Awake()
+    protected virtual void Awake()
     {
         AutoBindReferences();
         if (!HasSceneReferences())
@@ -137,8 +137,13 @@ public abstract class ShopBagBase : MonoBehaviour
             }
         }
 
+        NormalizeRestoredContents();
         RebuildSlotViews();
         ContentsChanged?.Invoke();
+    }
+
+    protected virtual void NormalizeRestoredContents()
+    {
     }
 
     protected virtual void StoreContent(ShopContentDefinition content)

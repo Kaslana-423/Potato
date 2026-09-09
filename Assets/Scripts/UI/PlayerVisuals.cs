@@ -5,15 +5,9 @@ using UnityEngine;
 /// </summary>
 public class PlayerVisuals : MonoBehaviour
 {
-    [Header("动画设置")]
-    public float wobbleSpeed = 1.5f;
-    public float wobbleAngle = 15f;
-    public float squashAmount = 0.15f;
-
     private SpriteRenderer spriteRenderer;
     private PlayerController playerController;
 
-    private float wobbleTimer;
     private Vector3 baseScale;
 
     void Start()
@@ -45,12 +39,13 @@ public class PlayerVisuals : MonoBehaviour
         baseScale = newScale;
     }
 
-    void Update()
+    void LateUpdate()
     {
         if (spriteRenderer == null || playerController == null) return;
 
         HandleSpriteFlip();
-        UpdateWobbleAnimation();
+        spriteRenderer.transform.localRotation = Quaternion.identity;
+        spriteRenderer.transform.localScale = baseScale;
     }
 
     private void HandleSpriteFlip()
@@ -62,28 +57,4 @@ public class PlayerVisuals : MonoBehaviour
             spriteRenderer.flipX = true;
     }
 
-    private void UpdateWobbleAnimation()
-    {
-        float currentSpeed = playerController.CurrentVelocity.magnitude;
-
-        if (currentSpeed > 0.1f)
-        {
-            wobbleTimer += Time.deltaTime * currentSpeed * wobbleSpeed;
-
-            float zAngle = Mathf.Sin(wobbleTimer) * wobbleAngle;
-            // 晃动和缩放只作用于视觉子级，不影响父级 Collider
-            spriteRenderer.transform.localRotation = Quaternion.Euler(0, 0, zAngle);
-
-            float scaleY = 1f + Mathf.Cos(wobbleTimer * 2f) * squashAmount;
-            float scaleX = 1f - Mathf.Cos(wobbleTimer * 2f) * squashAmount;
-
-            spriteRenderer.transform.localScale = new Vector3(baseScale.x * scaleX, baseScale.y * scaleY, baseScale.z);
-        }
-        else
-        {
-            wobbleTimer = 0f;
-            spriteRenderer.transform.localRotation = Quaternion.Lerp(spriteRenderer.transform.localRotation, Quaternion.identity, Time.deltaTime * 15f);
-            spriteRenderer.transform.localScale = Vector3.Lerp(spriteRenderer.transform.localScale, baseScale, Time.deltaTime * 15f);
-        }
-    }
 }

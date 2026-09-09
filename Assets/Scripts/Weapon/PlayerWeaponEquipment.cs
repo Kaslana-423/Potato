@@ -10,20 +10,28 @@ public sealed class PlayerWeaponEquipment : MonoBehaviour
     private const string RangedTemplatePath = "Weapon/Templates/RangedWeaponTemplate";
 
     [Header("Runtime Root")]
+    [SerializeField] private WeaponBag weaponLoadout;
     [SerializeField] private Transform weaponRoot;
     [SerializeField, Min(0f)] private float formationRadius = 0.55f;
 
     private readonly List<WeaponBase> runtimeWeapons = new List<WeaponBase>();
-    private WeaponBag boundBag;
-    private bool hasTakenControl;
+    private IPlayerWeaponLoadout boundLoadout;
 
     public IReadOnlyList<WeaponBase> RuntimeWeapons => runtimeWeapons;
     public int EquippedCount => runtimeWeapons.Count;
-    public bool HasTakenControl => hasTakenControl;
 
     private void Awake()
     {
         AutoBindReferences();
+        if (weaponLoadout == null || weaponRoot == null)
+        {
+            Debug.LogError("Player weapon loadout and RuntimeWeapons root must be assigned in the scene.", this);
+            enabled = false;
+            return;
+        }
+
+        weaponLoadout.EnsureStartingWeapon();
+        BindLoadout(weaponLoadout);
     }
 
     private void OnValidate()
@@ -33,62 +41,51 @@ public sealed class PlayerWeaponEquipment : MonoBehaviour
 
     private void OnDestroy()
     {
-        UnsubscribeFromBag();
+        UnsubscribeFromLoadout();
     }
 
-    public void Bind(WeaponBag bag, bool synchronizeImmediately)
+    private void BindLoadout(IPlayerWeaponLoadout loadout)
     {
-        if (boundBag == bag)
-        {
-            if (synchronizeImmediately && !hasTakenControl)
-            {
-                SynchronizeNow();
-            }
-
-            return;
-        }
-
-        UnsubscribeFromBag();
-        boundBag = bag;
-        if (boundBag != null)
-        {
-            boundBag.ContentsChanged += HandleBagContentsChanged;
-        }
-
-        if (synchronizeImmediately)
-        {
-            SynchronizeNow();
-        }
-    }
-
-    [ContextMenu("Synchronize From Weapon Bag")]
-    public void SynchronizeNow()
-    {
-        if (boundBag == null)
+        if (ReferenceEquals(boundLoadout, loadout))
         {
             return;
         }
 
-        AutoBindReferences();
-        hasTakenControl = true;
+        UnsubscribeFromLoadout();
+        boundLoadout = loadout;
+        if (boundLoadout != null)
+        {
+            boundLoadout.Changed += HandleLoadoutChanged;
+        }
+
+        RebuildPresentation();
+    }
+
+    [ContextMenu("Rebuild Equipped Weapon Presentation")]
+    private void RebuildPresentation()
+    {
+        if (boundLoadout == null || weaponRoot == null)
+        {
+            return;
+        }
+
         ClearRuntimeWeapons();
 
-        int weaponCount = 0;
+        int weaponCount = boundLoadout.WeaponCount;
         var familyCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-        foreach (ShopContentDefinition content in boundBag.Contents)
+        for (int index = 0; index < weaponCount; index++)
         {
-            if (content is ShopWeaponDefinition weaponDefinition)
+            ShopWeaponDefinition weaponDefinition = boundLoadout.GetWeapon(index);
+            if (weaponDefinition != null)
             {
-                weaponCount++;
                 familyCounts.TryGetValue(weaponDefinition.FamilyId, out int familyCount);
                 familyCounts[weaponDefinition.FamilyId] = familyCount + 1;
             }
         }
 
-        int weaponIndex = 0;
-        foreach (ShopContentDefinition content in boundBag.Contents)
+        for (int weaponIndex = 0; weaponIndex < weaponCount; weaponIndex++)
         {
-            ShopWeaponDefinition definition = content as ShopWeaponDefinition;
+            ShopWeaponDefinition definition = boundLoadout.GetWeapon(weaponIndex);
             if (definition == null)
             {
                 continue;
@@ -104,14 +101,17 @@ public sealed class PlayerWeaponEquipment : MonoBehaviour
             {
                 runtimeWeapons.Add(runtimeWeapon);
             }
-
-            weaponIndex++;
         }
     }
 
     [ContextMenu("Auto Bind References")]
     public void AutoBindReferences()
     {
+        if (weaponLoadout == null)
+        {
+            weaponLoadout = FindObjectOfType<WeaponBag>(true);
+        }
+
         if (weaponRoot == null)
         {
             Transform existingRoot = transform.Find("RuntimeWeapons");
@@ -119,26 +119,20 @@ public sealed class PlayerWeaponEquipment : MonoBehaviour
             {
                 weaponRoot = existingRoot;
             }
-            else if (Application.isPlaying)
-            {
-                var rootObject = new GameObject("RuntimeWeapons");
-                rootObject.layer = gameObject.layer;
-                weaponRoot = rootObject.transform;
-                weaponRoot.SetParent(transform, false);
-            }
         }
     }
 
-    private void HandleBagContentsChanged()
+    private void HandleLoadoutChanged()
     {
-        SynchronizeNow();
+        RebuildPresentation();
     }
 
-    private void UnsubscribeFromBag()
+    private void UnsubscribeFromLoadout()
     {
-        if (boundBag != null)
+        if (boundLoadout != null)
         {
-            boundBag.ContentsChanged -= HandleBagContentsChanged;
+            boundLoadout.Changed -= HandleLoadoutChanged;
+            boundLoadout = null;
         }
     }
 

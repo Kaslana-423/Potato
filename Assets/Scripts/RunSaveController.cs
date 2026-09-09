@@ -66,7 +66,15 @@ public sealed class RunSaveController : MonoBehaviour
             Vector3 position = playerHealth.transform.position;
             position.x = saveData.playerPositionX;
             position.y = saveData.playerPositionY;
-            playerHealth.transform.position = position;
+            PlayerController controller = playerHealth.GetComponent<PlayerController>();
+            if (controller != null)
+            {
+                controller.RestorePosition(position);
+            }
+            else
+            {
+                playerHealth.transform.position = position;
+            }
         }
 
         wallet?.SetCoins(saveData.coins);
@@ -87,6 +95,11 @@ public sealed class RunSaveController : MonoBehaviour
 
     public void SaveNow(RunSavePhase phase)
     {
+        if (GameSessionState.IsScenePreview)
+        {
+            return;
+        }
+
         if (suspended || spawner == null || spawner.HasRunEnded)
         {
             return;
@@ -191,8 +204,6 @@ public sealed class RunSaveController : MonoBehaviour
         {
             weaponBag = FindObjectOfType<WeaponBag>(true);
         }
-
-        weaponBag?.EnsureStartingWeapon();
 
         if (relicBag == null)
         {

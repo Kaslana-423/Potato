@@ -87,7 +87,6 @@ public sealed class ShopManager : MonoBehaviour
     [Header("Bags")]
     [SerializeField] private RelicBag relicBag;
     [SerializeField] private WeaponBag weaponBag;
-    [SerializeField] private PlayerWeaponEquipment playerWeaponEquipment;
 
     [Header("Currency")]
     [SerializeField] private PlayerWallet playerWallet;
@@ -340,36 +339,6 @@ public sealed class ShopManager : MonoBehaviour
         if (weaponBag == null)
         {
             weaponBag = FindComponent<WeaponBag>("WeaponBag");
-        }
-
-        if (playerWeaponEquipment == null)
-        {
-            playerWeaponEquipment = FindObjectOfType<PlayerWeaponEquipment>(true);
-        }
-
-        if (playerWeaponEquipment == null && Application.isPlaying)
-        {
-            PlayerStats playerStats = PlayerStats.Instance != null
-                ? PlayerStats.Instance
-                : FindObjectOfType<PlayerStats>(true);
-            if (playerStats != null)
-            {
-                playerWeaponEquipment = playerStats.GetComponent<PlayerWeaponEquipment>();
-                if (playerWeaponEquipment == null)
-                {
-                    playerWeaponEquipment = playerStats.gameObject.AddComponent<PlayerWeaponEquipment>();
-                }
-            }
-        }
-
-        if (Application.isPlaying && weaponBag != null)
-        {
-            weaponBag.EnsureStartingWeapon();
-        }
-
-        if (playerWeaponEquipment != null && weaponBag != null)
-        {
-            playerWeaponEquipment.Bind(weaponBag, weaponBag.Count > 0);
         }
 
         if (playerWallet == null)

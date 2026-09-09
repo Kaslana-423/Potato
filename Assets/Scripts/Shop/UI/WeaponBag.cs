@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-public sealed class WeaponBag : ShopBagBase
+public sealed class WeaponBag : ShopBagBase, IPlayerWeaponLoadout
 {
     [SerializeField, Min(1)] private int maxWeapons = 6;
     [SerializeField] private Sprite fallbackWeaponIcon;
@@ -15,12 +15,27 @@ public sealed class WeaponBag : ShopBagBase
     public ShopWeaponDefinition LastAddedWeapon { get; private set; }
     public int LastCombinationCount { get; private set; }
     public bool LastAddCombined => LastCombinationCount > 0;
+    public int WeaponCount => Count;
+
+    event Action IPlayerWeaponLoadout.Changed
+    {
+        add => ContentsChanged += value;
+        remove => ContentsChanged -= value;
+    }
 
     protected override string MissingBagMessage => "武器背包没有找到 Content。";
 
-    private void Start()
+    protected override void Awake()
     {
+        base.Awake();
         EnsureStartingWeapon();
+    }
+
+    public ShopWeaponDefinition GetWeapon(int index)
+    {
+        return index >= 0 && index < Count
+            ? Contents[index] as ShopWeaponDefinition
+            : null;
     }
 
     public void EnsureStartingWeapon()
@@ -31,18 +46,15 @@ public sealed class WeaponBag : ShopBagBase
             return;
         }
 
-        foreach (ShopContentDefinition content in ShopContentCatalog.All)
+        ShopWeaponDefinition startingWeapon = FindStartingWeapon();
+        if (startingWeapon != null)
         {
-            if (content is ShopWeaponDefinition
-                && string.Equals(content.Id, resolvedStartingWeaponId, StringComparison.OrdinalIgnoreCase))
+            if (!TryAdd(startingWeapon, out string failureReason))
             {
-                if (!TryAdd(content, out string failureReason))
-                {
-                    Debug.LogWarning($"Could not add starting weapon '{resolvedStartingWeaponId}': {failureReason}", this);
-                }
-
-                return;
+                Debug.LogWarning($"Could not add starting weapon '{resolvedStartingWeaponId}': {failureReason}", this);
             }
+
+            return;
         }
 
         Debug.LogWarning($"Starting weapon '{resolvedStartingWeaponId}' was not found in the shop catalog.", this);
@@ -54,6 +66,40 @@ public sealed class WeaponBag : ShopBagBase
         return character != null && !string.IsNullOrWhiteSpace(character.StartingWeaponId)
             ? character.StartingWeaponId
             : startingWeaponId;
+    }
+
+    protected override void NormalizeRestoredContents()
+    {
+        if (!addStartingWeapon || Count > 0)
+        {
+            return;
+        }
+
+        ShopWeaponDefinition startingWeapon = FindStartingWeapon();
+        if (startingWeapon != null)
+        {
+            MutableContents.Add(startingWeapon);
+        }
+    }
+
+    private ShopWeaponDefinition FindStartingWeapon()
+    {
+        string resolvedStartingWeaponId = ResolveStartingWeaponId();
+        if (string.IsNullOrWhiteSpace(resolvedStartingWeaponId))
+        {
+            return null;
+        }
+
+        foreach (ShopContentDefinition content in ShopContentCatalog.All)
+        {
+            if (content is ShopWeaponDefinition weapon
+                && string.Equals(content.Id, resolvedStartingWeaponId, StringComparison.OrdinalIgnoreCase))
+            {
+                return weapon;
+            }
+        }
+
+        return null;
     }
 
     protected override bool CanAdd(ShopContentDefinition content, out string failureReason)

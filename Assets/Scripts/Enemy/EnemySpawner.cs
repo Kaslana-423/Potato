@@ -24,6 +24,9 @@ public sealed class EnemySpawner : MonoBehaviour
     [SerializeField] private bool hideShopOnStart = true;
     [SerializeField] private bool refreshShopWhenOpened = true;
 
+    [Header("Arena Gates")]
+    [SerializeField] private ArenaGateController arenaGate;
+
     [Header("Wave Plan")]
     [SerializeField] private bool useConfiguredWaves = true;
     [SerializeField] private List<EnemyWaveSpawnSettings> waveSettings = new List<EnemyWaveSpawnSettings>();
@@ -66,6 +69,7 @@ public sealed class EnemySpawner : MonoBehaviour
     private RunSaveController saveController;
     private Coroutine spawnRoutine;
     private Coroutine nextLevelRoutine;
+    private Coroutine waveEntranceRoutine;
     private bool levelRunning;
     private int levelRunId;
     private float currentWaveDurationSeconds;
@@ -80,7 +84,7 @@ public sealed class EnemySpawner : MonoBehaviour
     public int TotalEnemiesKilled => totalEnemiesKilled;
     public int FinalWave => finalWave;
     public bool HasRunEnded => runEnded;
-    public bool IsStartingNextWave => nextLevelRoutine != null;
+    public bool IsStartingNextWave => nextLevelRoutine != null || waveEntranceRoutine != null;
     public RunSavePhase CurrentSavePhase => levelRunning
         ? RunSavePhase.Combat
         : shopManager != null && shopManager.IsOpen
@@ -119,6 +123,10 @@ public sealed class EnemySpawner : MonoBehaviour
 
     private void Start()
     {
+        if (GameSessionState.IsScenePreview)
+        {
+            Time.timeScale = 1f;
+        }
         EnsureSpawnPool();
         PrewarmEnemyPools();
         EnsureLifetimeTracker();
@@ -140,7 +148,7 @@ public sealed class EnemySpawner : MonoBehaviour
         EnsureSaveFlow();
         GameplayPauseController.FindSceneController(this);
 
-        if (GameSessionState.TryLoadRun(out RunSaveData saveData))
+        if (!GameSessionState.IsScenePreview && GameSessionState.TryLoadRun(out RunSaveData saveData))
         {
             saveController.SetSuspended(true);
             StartCoroutine(RestoreSavedRunRoutine(saveData));
@@ -160,6 +168,11 @@ public sealed class EnemySpawner : MonoBehaviour
     [ContextMenu("Start Spawning")]
     public void StartSpawning()
     {
+        StartSpawning(true);
+    }
+
+    private void StartSpawning(bool playEntrance)
+    {
         if (runEnded)
         {
             return;
@@ -167,9 +180,15 @@ public sealed class EnemySpawner : MonoBehaviour
 
         StopSpawning();
         levelRunId++;
-        levelRunning = true;
-        spawnRoutine = StartCoroutine(SpawnWaveLoop());
-        saveController?.SaveNow(RunSavePhase.Combat);
+        int runId = levelRunId;
+        if (playEntrance && arenaGate != null && arenaGate.IsConfigured)
+        {
+            waveEntranceRoutine = StartCoroutine(StartWaveThroughEntrance(runId));
+            return;
+        }
+
+        arenaGate?.PrepareCombatWithoutEntrance();
+        BeginCombat(runId);
     }
 
     [ContextMenu("Stop Spawning")]
@@ -186,6 +205,12 @@ public sealed class EnemySpawner : MonoBehaviour
         {
             StopCoroutine(nextLevelRoutine);
             nextLevelRoutine = null;
+        }
+
+        if (waveEntranceRoutine != null)
+        {
+            StopCoroutine(waveEntranceRoutine);
+            waveEntranceRoutine = null;
         }
     }
 
@@ -274,6 +299,31 @@ public sealed class EnemySpawner : MonoBehaviour
         yield return FinishWaveAndOpenShop(runId);
     }
 
+    private IEnumerator StartWaveThroughEntrance(int runId)
+    {
+        yield return arenaGate.PlayEntrance();
+        if (runId != levelRunId || runEnded)
+        {
+            waveEntranceRoutine = null;
+            yield break;
+        }
+
+        waveEntranceRoutine = null;
+        BeginCombat(runId);
+    }
+
+    private void BeginCombat(int runId)
+    {
+        if (runId != levelRunId || runEnded)
+        {
+            return;
+        }
+
+        levelRunning = true;
+        spawnRoutine = StartCoroutine(SpawnWaveLoop());
+        saveController?.SaveNow(RunSavePhase.Combat);
+    }
+
     private IEnumerator FinishWaveAndOpenShop(int runId)
     {
         lastWaveElapsedSeconds = CurrentWaveDurationSeconds;
@@ -293,6 +343,12 @@ public sealed class EnemySpawner : MonoBehaviour
             yield return new WaitForSeconds(shopOpenDelaySeconds);
         }
 
+        yield return WaitForPlayerExit(runId);
+        if (runId != levelRunId)
+        {
+            yield break;
+        }
+
         if (runId == levelRunId && endRunAfterFinalWave && currentWave >= finalWave)
         {
             EnsureSettlementFlow();
@@ -301,6 +357,20 @@ public sealed class EnemySpawner : MonoBehaviour
         }
 
         yield return ProcessPostWaveRewardsAndOpenShop(runId);
+    }
+
+    private IEnumerator WaitForPlayerExit(int runId)
+    {
+        if (arenaGate == null || !arenaGate.IsConfigured)
+        {
+            yield break;
+        }
+
+        arenaGate.OpenExit();
+        while (runId == levelRunId && !arenaGate.HasPlayerExited)
+        {
+            yield return null;
+        }
     }
 
     private IEnumerator ProcessPostWaveRewardsAndOpenShop(int runId)
@@ -489,6 +559,7 @@ public sealed class EnemySpawner : MonoBehaviour
 
     private void OpenShop()
     {
+        arenaGate?.ShowShopState();
         EnsureShopFlow();
         shopFlow.Open(ref shopManager, shopRoot, ref shopExitButton, refreshShopWhenOpened);
         saveController?.SaveNow(RunSavePhase.Shop);
@@ -731,6 +802,12 @@ public sealed class EnemySpawner : MonoBehaviour
             int runId = levelRunId;
             saveController.SetSuspended(false);
             saveController.SaveNow(RunSavePhase.PostWave);
+            yield return WaitForPlayerExit(runId);
+            if (runId != levelRunId)
+            {
+                yield break;
+            }
+
             if (endRunAfterFinalWave && currentWave >= finalWave)
             {
                 settlementController?.ShowVictory();
@@ -742,7 +819,7 @@ public sealed class EnemySpawner : MonoBehaviour
         }
 
         saveController.SetSuspended(false);
-        StartSpawning();
+        StartSpawning(false);
     }
 
     private void EnsureShopFlow()

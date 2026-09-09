@@ -35,6 +35,8 @@ public static class GameSessionState
     public static bool Fullscreen => ResolutionMode == GameResolutionMode.Fullscreen;
     public static string CurrentCharacterId { get; private set; } = DefaultCharacterId;
     public static bool IsNewRunPendingInitialization { get; private set; }
+    // 直接在编辑器运行战斗场景时，不读取或覆盖历史无槽位存档。
+    public static bool IsScenePreview => Application.isEditor && !SaveContext.HasCurrentSave;
 
     public static void BeginNewRun()
     {
@@ -44,15 +46,21 @@ public static class GameSessionState
     public static void BeginNewRun(string characterId)
     {
         CurrentCharacterId = NormalizeCharacterId(characterId);
-        DeleteRunSaveFiles();
-        DeleteLegacyRunSave();
+        if (!IsScenePreview)
+        {
+            DeleteRunSaveFiles();
+            DeleteLegacyRunSave();
+        }
         IsNewRunPendingInitialization = true;
     }
 
     public static void AbandonRun()
     {
-        DeleteRunSaveFiles();
-        DeleteLegacyRunSave();
+        if (!IsScenePreview)
+        {
+            DeleteRunSaveFiles();
+            DeleteLegacyRunSave();
+        }
         IsNewRunPendingInitialization = false;
     }
 
