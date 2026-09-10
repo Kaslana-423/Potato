@@ -10,6 +10,7 @@ public static class ShopItemPrefabCreator
     private const string PrefabPath = PrefabDirectory + "/ShopItem.prefab";
     private const string ChineseFontPath =
         "Assets/TextMesh Pro/Resources/Fonts & Materials/SmileySans-Oblique SDF.asset";
+    private const string PinSpritePath = "Assets/Arts/shop/矢量智能对象-1.png";
 
     [MenuItem("Tools/Potato Shop/Create ShopItem Prefab Template")]
     public static void CreateShopItemPrefabTemplate()
@@ -114,12 +115,16 @@ public static class ShopItemPrefabCreator
                 new Vector2(0f, -250f),
                 new Vector2(180f, 72f));
             Image pricePanelImage = pricePanel.AddComponent<Image>();
-            pricePanelImage.color = new Color(0.14f, 0.14f, 0.14f, 1f);
+            pricePanelImage.color = new Color(0.88f, 0.79f, 0.61f, 1f);
+            Button priceButton = pricePanel.AddComponent<Button>();
+            priceButton.targetGraphic = pricePanelImage;
+            priceButton.interactable = false;
+            priceButton.transition = Selectable.Transition.None;
 
             CreateText(
                 "PriceText",
                 pricePanel.transform,
-                "<color=#90E65A>30</color> 材料",
+                "下拉购买 ↓\n<color=#4F7A3A>30</color> 材料",
                 Vector2.zero,
                 new Vector2(180f, 72f),
                 30,
@@ -145,16 +150,20 @@ public static class ShopItemPrefabCreator
 
     private static void CreateLockButton(Transform parent)
     {
-        GameObject buttonObject = CreateUiObject("LockButton", parent, Vector2.zero, new Vector2(84f, 38f));
+        GameObject buttonObject = CreateUiObject("LockButton", parent, Vector2.zero, new Vector2(86f, 86f));
         RectTransform rect = buttonObject.GetComponent<RectTransform>();
-        rect.anchorMin = rect.anchorMax = rect.pivot = Vector2.one;
-        rect.anchoredPosition = new Vector2(-12f, -12f);
+        rect.anchorMin = rect.anchorMax = new Vector2(0.86f, 0.91f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = Vector2.zero;
         Image image = buttonObject.AddComponent<Image>();
-        image.color = new Color(0.16f, 0.16f, 0.16f, 0.96f);
+        image.color = Color.white;
+        image.sprite = AssetDatabase.LoadAssetAtPath<Sprite>(PinSpritePath);
+        image.preserveAspect = true;
         buttonObject.AddComponent<Button>().targetGraphic = image;
-        TMP_Text text = CreateText("LockText", buttonObject.transform, "锁定", Vector2.zero,
-            new Vector2(84f, 38f), 18, TextAlignmentOptions.Center, Color.white);
+        TMP_Text text = CreateText("LockText", buttonObject.transform, string.Empty, Vector2.zero,
+            new Vector2(86f, 86f), 18, TextAlignmentOptions.Center, Color.clear);
         text.raycastTarget = false;
+        text.gameObject.SetActive(false);
     }
 
     private static GameObject CreateUiObject(

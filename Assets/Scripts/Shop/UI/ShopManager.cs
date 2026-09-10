@@ -385,6 +385,7 @@ public sealed class ShopManager : MonoBehaviour
     public void SetShopOpen(bool open)
     {
         bool opening = open && !IsOpen;
+        bool refreshedOffers = false;
         if (open)
         {
             if (opening)
@@ -402,6 +403,12 @@ public sealed class ShopManager : MonoBehaviour
             if (refreshWhenOpenedIfEmpty && currentOffers.Count == 0)
             {
                 RefreshShop();
+                refreshedOffers = true;
+            }
+
+            if (opening && !refreshedOffers)
+            {
+                PlayOfferDropIn();
             }
         }
         else
@@ -415,7 +422,7 @@ public sealed class ShopManager : MonoBehaviour
         EnsureUi();
 
         GenerateOffersPreservingLocks();
-        SetStatus($"已生成 {currentOffers.Count} 个商品。点击卡片查看详情。");
+        SetStatus($"已生成 {currentOffers.Count} 个商品。点击查看详情，向下拖动卡牌购买。");
     }
 
     public void TryPaidRefresh()
@@ -593,6 +600,7 @@ public sealed class ShopManager : MonoBehaviour
                     GetOfferPrice(offer),
                     CanAffordOffer(offer));
                 view.SetVisible(true);
+                view.PlayDropIn(index * 0.08f);
             }
             else
             {
@@ -890,7 +898,7 @@ public sealed class ShopManager : MonoBehaviour
 
             if (offerView != null)
             {
-                offerView.MarkPurchased();
+                offerView.PlayPurchasedDrop();
                 int purchasedIndex = Array.IndexOf(offerViews, offerView);
                 if (purchasedIndex >= 0 && purchasedIndex < currentOffers.Count)
                 {
@@ -909,6 +917,18 @@ public sealed class ShopManager : MonoBehaviour
         {
             wallet.AddCoins(price);
             SetStatus(failureReason);
+        }
+    }
+
+    private void PlayOfferDropIn()
+    {
+        int visibleCount = Mathf.Min(currentOffers.Count, offerViews.Length);
+        for (int index = 0; index < visibleCount; index++)
+        {
+            if (currentOffers[index] != null && offerViews[index] != null)
+            {
+                offerViews[index].PlayDropIn(index * 0.08f);
+            }
         }
     }
 
