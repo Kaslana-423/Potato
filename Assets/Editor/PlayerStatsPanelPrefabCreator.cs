@@ -268,16 +268,13 @@ public static class PlayerStatsPanelPrefabCreator
         yield return MakeRed("damage", "伤害", "伤", "-17", new Color(1f, 0.20f, 0.25f, 1f));
         yield return MakeGreen("melee_damage", "近战伤害", "近", "5", new Color(0.95f, 0.88f, 0.45f, 1f));
         yield return MakeGreen("ranged_damage", "远程伤害", "远", "8", new Color(0.78f, 0.45f, 1f, 1f));
-        yield return MakeGreen("elemental_damage", "元素伤害", "元", "2", new Color(1f, 0.58f, 0.35f, 1f));
         yield return MakeGreen("attack_speed", "攻击速度", "速", "23", new Color(0.90f, 0.90f, 0.90f, 1f));
         yield return MakeGreen("crit_chance", "暴击率", "暴", "59", new Color(1f, 0.20f, 0.25f, 1f));
-        yield return MakeGreen("engineering", "工程学", "工", "8", new Color(0.35f, 0.95f, 1f, 1f));
         yield return MakeGreen("range", "范围", "范", "171", new Color(0.78f, 0.45f, 1f, 1f));
         yield return MakeGreen("armor", "护甲", "护", "3", new Color(0.98f, 0.88f, 0.20f, 1f));
         yield return MakeGreen("dodge", "闪避", "闪", "12", new Color(0.70f, 0.95f, 1f, 1f));
         yield return MakeGreen("speed", "速度", "移", "8", new Color(0.92f, 0.92f, 0.92f, 1f));
         yield return MakeGreen("luck", "幸运", "运", "22", new Color(0.98f, 0.98f, 0.98f, 1f));
-        yield return MakeGreen("harvesting", "收获", "收", "18", new Color(1f, 0.90f, 0.48f, 1f));
     }
 
     private static PlayerStatDisplayEntry MakeGreen(

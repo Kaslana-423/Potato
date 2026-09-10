@@ -1,8 +1,20 @@
 using System;
 using System.Collections.Generic;
+using System.Text;
 
 public static class ShopContentCatalog
 {
+    private static readonly string[] removedStatTokens =
+    {
+        "elementaldamage",
+        "engineering",
+        "harvesting",
+        "harvest",
+        "元素伤害",
+        "工程学",
+        "收获"
+    };
+
     private static readonly IReadOnlyList<ShopContentDefinition> all = BuildCatalog();
 
     public static IReadOnlyList<ShopContentDefinition> All => all;
@@ -50,9 +62,67 @@ public static class ShopContentCatalog
         ISet<string> ids,
         ShopContentDefinition content)
     {
-        if (content != null && ids.Add(content.Id))
+        if (content != null && IsSupportedRuntimeContent(content) && ids.Add(content.Id))
         {
             contents.Add(content);
         }
+    }
+
+    private static bool IsSupportedRuntimeContent(ShopContentDefinition content)
+    {
+        if (ContainsRemovedStat(content.Description))
+        {
+            return false;
+        }
+
+        if (content is ShopItemDefinition item)
+        {
+            IReadOnlyList<ItemStatModifier> modifiers = item.Modifiers;
+            for (int index = 0; index < modifiers.Count; index++)
+            {
+                if (ContainsRemovedStat(modifiers[index].StatName))
+                {
+                    return false;
+                }
+            }
+        }
+
+        if (content is ShopWeaponDefinition weapon
+            && (ContainsRemovedStat(weapon.DamageScalingStats)
+                || ContainsRemovedStat(weapon.SpecialEffects)))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    private static bool ContainsRemovedStat(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        var normalizedBuilder = new StringBuilder(value.Length);
+        for (int index = 0; index < value.Length; index++)
+        {
+            char character = value[index];
+            if (char.IsLetterOrDigit(character))
+            {
+                normalizedBuilder.Append(char.ToLowerInvariant(character));
+            }
+        }
+
+        string normalized = normalizedBuilder.ToString();
+        for (int index = 0; index < removedStatTokens.Length; index++)
+        {
+            if (normalized.Contains(removedStatTokens[index]))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

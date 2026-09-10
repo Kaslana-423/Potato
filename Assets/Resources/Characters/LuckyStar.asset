@@ -18,14 +18,12 @@ MonoBehaviour:
   unlocked: 0
   displayName: "\u5E78\u8FD0\u661F"
   typeLabel: "\u5E78\u8FD0\u578B"
-  description: "\u5E78\u8FD0 +15\n\u6536\u83B7 +10\n\u4F24\u5BB3 -10"
+  description: "\u5E78\u8FD0 +15\n\u4F24\u5BB3 -10"
   portrait: {fileID: 0}
   startingWeaponId: weapon.rock.tier_1
   startingWeaponDisplayName: "\u77F3\u5934"
   startingStatModifiers:
   - statId: 15
     amount: 15
-  - statId: 16
-    amount: 10
   - statId: 4
     amount: -10

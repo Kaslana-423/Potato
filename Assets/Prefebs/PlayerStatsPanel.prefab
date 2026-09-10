@@ -766,14 +766,6 @@ MonoBehaviour:
     IconColor: {r: 0.78, g: 0.45, b: 1, a: 1}
     NameColor: {r: 0.05, g: 1, b: 0.12, a: 1}
     ValueColor: {r: 0.05, g: 1, b: 0.12, a: 1}
-  - Id: elemental_damage
-    DisplayName: "\u5143\u7D20\u4F24\u5BB3"
-    IconText: "\u5143"
-    IconSprite: {fileID: 0}
-    ValueText: 2
-    IconColor: {r: 1, g: 0.58, b: 0.35, a: 1}
-    NameColor: {r: 0.05, g: 1, b: 0.12, a: 1}
-    ValueColor: {r: 0.05, g: 1, b: 0.12, a: 1}
   - Id: attack_speed
     DisplayName: "\u653B\u51FB\u901F\u5EA6"
     IconText: "\u901F"
@@ -788,14 +780,6 @@ MonoBehaviour:
     IconSprite: {fileID: 0}
     ValueText: 59
     IconColor: {r: 1, g: 0.2, b: 0.25, a: 1}
-    NameColor: {r: 0.05, g: 1, b: 0.12, a: 1}
-    ValueColor: {r: 0.05, g: 1, b: 0.12, a: 1}
-  - Id: engineering
-    DisplayName: "\u5DE5\u7A0B\u5B66"
-    IconText: "\u5DE5"
-    IconSprite: {fileID: 0}
-    ValueText: 8
-    IconColor: {r: 0.35, g: 0.95, b: 1, a: 1}
     NameColor: {r: 0.05, g: 1, b: 0.12, a: 1}
     ValueColor: {r: 0.05, g: 1, b: 0.12, a: 1}
   - Id: range
@@ -836,14 +820,6 @@ MonoBehaviour:
     IconSprite: {fileID: 0}
     ValueText: 22
     IconColor: {r: 0.98, g: 0.98, b: 0.98, a: 1}
-    NameColor: {r: 0.05, g: 1, b: 0.12, a: 1}
-    ValueColor: {r: 0.05, g: 1, b: 0.12, a: 1}
-  - Id: harvesting
-    DisplayName: "\u6536\u83B7"
-    IconText: "\u6536"
-    IconSprite: {fileID: 0}
-    ValueText: 18
-    IconColor: {r: 1, g: 0.9, b: 0.48, a: 1}
     NameColor: {r: 0.05, g: 1, b: 0.12, a: 1}
     ValueColor: {r: 0.05, g: 1, b: 0.12, a: 1}
   secondaryPreviewRows:

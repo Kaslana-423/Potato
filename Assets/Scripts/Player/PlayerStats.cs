@@ -4,45 +4,42 @@ using UnityEngine;
 
 public enum PlayerStatId
 {
-    Level,
-    MaxHp,
-    HpRegeneration,
-    LifeSteal,
-    Damage,
-    MeleeDamage,
-    RangedDamage,
-    ElementalDamage,
-    AttackSpeed,
-    CritChance,
-    Engineering,
-    Range,
-    Armor,
-    Dodge,
-    Speed,
-    Luck,
-    Harvesting,
-    ConsumableHeal,
-    MaterialsHealing,
-    XpGain,
-    PickupRange,
-    ItemsPrice,
-    ExplosionDamage,
-    ExplosionSize,
-    Bounces,
-    Piercing,
-    PiercingDamage,
-    DamageAgainstBosses,
-    StructureAttackSpeed,
-    StructureRange,
-    BurningSpeed,
-    BurningSpread,
-    Knockback,
-    DoubleMaterialChance,
-    FreeRerolls,
-    Trees,
-    Enemies,
-    EnemySpeed,
-    RerollPrice
+    Level = 0,
+    MaxHp = 1,
+    HpRegeneration = 2,
+    LifeSteal = 3,
+    Damage = 4,
+    MeleeDamage = 5,
+    RangedDamage = 6,
+    AttackSpeed = 8,
+    CritChance = 9,
+    Range = 11,
+    Armor = 12,
+    Dodge = 13,
+    Speed = 14,
+    Luck = 15,
+    ConsumableHeal = 17,
+    MaterialsHealing = 18,
+    XpGain = 19,
+    PickupRange = 20,
+    ItemsPrice = 21,
+    ExplosionDamage = 22,
+    ExplosionSize = 23,
+    Bounces = 24,
+    Piercing = 25,
+    PiercingDamage = 26,
+    DamageAgainstBosses = 27,
+    StructureAttackSpeed = 28,
+    StructureRange = 29,
+    BurningSpeed = 30,
+    BurningSpread = 31,
+    Knockback = 32,
+    DoubleMaterialChance = 33,
+    FreeRerolls = 34,
+    Trees = 35,
+    Enemies = 36,
+    EnemySpeed = 37,
+    RerollPrice = 38
 }
 
 public sealed class PlayerStats : MonoBehaviour
@@ -59,16 +56,13 @@ public sealed class PlayerStats : MonoBehaviour
     [SerializeField] private int damage = -17;
     [SerializeField] private int meleeDamage = 5;
     [SerializeField] private int rangedDamage = 8;
-    [SerializeField] private int elementalDamage = 2;
     [SerializeField] private int attackSpeed = 23;
     [SerializeField] private int critChance = 59;
-    [SerializeField] private int engineering = 8;
     [SerializeField] private int range = 171;
     [SerializeField] private int armor = 3;
     [SerializeField] private int dodge = 12;
     [SerializeField] private int speed = 8;
     [SerializeField] private int luck = 22;
-    [SerializeField] private int harvesting = 18;
 
     [Header("次要属性")]
     [SerializeField] private int consumableHeal;
@@ -101,16 +95,13 @@ public sealed class PlayerStats : MonoBehaviour
     public int Damage => damage;
     public int MeleeDamage => meleeDamage;
     public int RangedDamage => rangedDamage;
-    public int ElementalDamage => elementalDamage;
     public int AttackSpeed => attackSpeed;
     public int CritChance => critChance;
-    public int Engineering => engineering;
     public int Range => range;
     public int Armor => armor;
     public int Dodge => dodge;
     public int Speed => speed;
     public int Luck => luck;
-    public int Harvesting => harvesting;
     public int ConsumableHeal => consumableHeal;
     public int MaterialsHealing => materialsHealing;
     public int XpGain => xpGain;
@@ -205,14 +196,10 @@ public sealed class PlayerStats : MonoBehaviour
                 return meleeDamage;
             case PlayerStatId.RangedDamage:
                 return rangedDamage;
-            case PlayerStatId.ElementalDamage:
-                return elementalDamage;
             case PlayerStatId.AttackSpeed:
                 return attackSpeed;
             case PlayerStatId.CritChance:
                 return critChance;
-            case PlayerStatId.Engineering:
-                return engineering;
             case PlayerStatId.Range:
                 return range;
             case PlayerStatId.Armor:
@@ -223,8 +210,6 @@ public sealed class PlayerStats : MonoBehaviour
                 return speed;
             case PlayerStatId.Luck:
                 return luck;
-            case PlayerStatId.Harvesting:
-                return harvesting;
             case PlayerStatId.ConsumableHeal:
                 return consumableHeal;
             case PlayerStatId.MaterialsHealing:
@@ -312,17 +297,11 @@ public sealed class PlayerStats : MonoBehaviour
             case PlayerStatId.RangedDamage:
                 rangedDamage = value;
                 break;
-            case PlayerStatId.ElementalDamage:
-                elementalDamage = value;
-                break;
             case PlayerStatId.AttackSpeed:
                 attackSpeed = value;
                 break;
             case PlayerStatId.CritChance:
                 critChance = value;
-                break;
-            case PlayerStatId.Engineering:
-                engineering = value;
                 break;
             case PlayerStatId.Range:
                 range = value;
@@ -338,9 +317,6 @@ public sealed class PlayerStats : MonoBehaviour
                 break;
             case PlayerStatId.Luck:
                 luck = value;
-                break;
-            case PlayerStatId.Harvesting:
-                harvesting = value;
                 break;
             case PlayerStatId.ConsumableHeal:
                 consumableHeal = value;
@@ -487,16 +463,13 @@ public sealed class PlayerStats : MonoBehaviour
             MakeEntry(PlayerStatId.Damage, "伤害", "伤", damage, new Color(1f, 0.20f, 0.25f, 1f)),
             MakeEntry(PlayerStatId.MeleeDamage, "近战伤害", "近", meleeDamage, new Color(0.95f, 0.88f, 0.45f, 1f)),
             MakeEntry(PlayerStatId.RangedDamage, "远程伤害", "远", rangedDamage, new Color(0.78f, 0.45f, 1f, 1f)),
-            MakeEntry(PlayerStatId.ElementalDamage, "元素伤害", "元", elementalDamage, new Color(1f, 0.58f, 0.35f, 1f)),
             MakeEntry(PlayerStatId.AttackSpeed, "攻击速度", "速", attackSpeed, new Color(0.90f, 0.90f, 0.90f, 1f)),
             MakeEntry(PlayerStatId.CritChance, "暴击率", "暴", critChance, new Color(1f, 0.20f, 0.25f, 1f)),
-            MakeEntry(PlayerStatId.Engineering, "工程学", "工", engineering, new Color(0.35f, 0.95f, 1f, 1f)),
             MakeEntry(PlayerStatId.Range, "范围", "范", range, new Color(0.78f, 0.45f, 1f, 1f)),
             MakeEntry(PlayerStatId.Armor, "护甲", "护", armor, new Color(0.98f, 0.88f, 0.20f, 1f)),
             MakeEntry(PlayerStatId.Dodge, "闪避", "闪", dodge, new Color(0.70f, 0.95f, 1f, 1f)),
             MakeEntry(PlayerStatId.Speed, "速度", "移", speed, new Color(0.92f, 0.92f, 0.92f, 1f)),
             MakeEntry(PlayerStatId.Luck, "幸运", "运", luck, new Color(0.98f, 0.98f, 0.98f, 1f)),
-            MakeEntry(PlayerStatId.Harvesting, "收获", "收", harvesting, new Color(1f, 0.90f, 0.48f, 1f)),
         };
     }
 
@@ -591,18 +564,12 @@ public sealed class PlayerStats : MonoBehaviour
             case "rangeddamage":
                 parsedId = PlayerStatId.RangedDamage;
                 return true;
-            case "elementaldamage":
-                parsedId = PlayerStatId.ElementalDamage;
-                return true;
             case "attackspeed":
                 parsedId = PlayerStatId.AttackSpeed;
                 return true;
             case "critchance":
             case "criticalchance":
                 parsedId = PlayerStatId.CritChance;
-                return true;
-            case "engineering":
-                parsedId = PlayerStatId.Engineering;
                 return true;
             case "range":
                 parsedId = PlayerStatId.Range;
@@ -618,10 +585,6 @@ public sealed class PlayerStats : MonoBehaviour
                 return true;
             case "luck":
                 parsedId = PlayerStatId.Luck;
-                return true;
-            case "harvesting":
-            case "harvest":
-                parsedId = PlayerStatId.Harvesting;
                 return true;
             case "consumableheal":
             case "consumablehealing":
@@ -767,14 +730,10 @@ public sealed class PlayerStats : MonoBehaviour
                 return "melee_damage";
             case PlayerStatId.RangedDamage:
                 return "ranged_damage";
-            case PlayerStatId.ElementalDamage:
-                return "elemental_damage";
             case PlayerStatId.AttackSpeed:
                 return "attack_speed";
             case PlayerStatId.CritChance:
                 return "crit_chance";
-            case PlayerStatId.Engineering:
-                return "engineering";
             case PlayerStatId.Range:
                 return "range";
             case PlayerStatId.Armor:
@@ -785,8 +744,6 @@ public sealed class PlayerStats : MonoBehaviour
                 return "speed";
             case PlayerStatId.Luck:
                 return "luck";
-            case PlayerStatId.Harvesting:
-                return "harvesting";
             case PlayerStatId.ConsumableHeal:
                 return "consumable_heal";
             case PlayerStatId.MaterialsHealing:

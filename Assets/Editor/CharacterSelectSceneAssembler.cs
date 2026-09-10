@@ -407,11 +407,11 @@ public static class CharacterSelectSceneAssembler
             3,
             "幸运星",
             "幸运型",
-            "幸运 +15\n收获 +10\n伤害 -10",
+            "幸运 +15\n伤害 -10",
             "weapon.rock.tier_1",
             "石头",
-            new[] { PlayerStatId.Luck, PlayerStatId.Harvesting, PlayerStatId.Damage },
-            new[] { 15, 10, -10 });
+            new[] { PlayerStatId.Luck, PlayerStatId.Damage },
+            new[] { 15, -10 });
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();

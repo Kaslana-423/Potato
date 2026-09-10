@@ -42,16 +42,13 @@ public static class LevelUpUpgradeCatalog
         new Definition(PlayerStatId.Damage, "伤害", 5, 8, 12, 16),
         new Definition(PlayerStatId.MeleeDamage, "近战伤害", 2, 4, 6, 8),
         new Definition(PlayerStatId.RangedDamage, "远程伤害", 1, 2, 3, 4),
-        new Definition(PlayerStatId.ElementalDamage, "元素伤害", 1, 2, 3, 4),
         new Definition(PlayerStatId.AttackSpeed, "攻击速度", 5, 10, 15, 20),
         new Definition(PlayerStatId.CritChance, "暴击率", 3, 5, 7, 9),
-        new Definition(PlayerStatId.Engineering, "工程学", 2, 3, 4, 5),
         new Definition(PlayerStatId.Range, "攻击范围", 15, 30, 45, 60),
         new Definition(PlayerStatId.Armor, "护甲", 1, 2, 3, 4),
         new Definition(PlayerStatId.Dodge, "闪避", 3, 6, 9, 12),
         new Definition(PlayerStatId.Speed, "移动速度", 3, 6, 9, 12),
         new Definition(PlayerStatId.Luck, "幸运", 5, 10, 15, 20),
-        new Definition(PlayerStatId.Harvesting, "收获", 5, 8, 10, 12),
     };
 
     public static IReadOnlyList<LevelUpUpgradeOption> GenerateOptions(int rewardLevel, int luck, int count = 4)
