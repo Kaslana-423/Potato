@@ -19,8 +19,8 @@ MonoBehaviour:
   m_SourceFontFileGUID: 0566717e10f0fb64780e4c5c76f53ff0
   m_SourceFontFile_EditorRef: {fileID: 12800000, guid: 0566717e10f0fb64780e4c5c76f53ff0,
     type: 3}
-  m_SourceFontFile: {fileID: 0}
-  m_AtlasPopulationMode: 0
+  m_SourceFontFile: {fileID: 12800000, guid: 0566717e10f0fb64780e4c5c76f53ff0, type: 3}
+  m_AtlasPopulationMode: 1
   m_FaceInfo:
     m_FaceIndex: 0
     m_FamilyName: bups 2.0
@@ -1781,7 +1781,7 @@ MonoBehaviour:
   m_AtlasTextures:
   - {fileID: 6299969465388522190}
   m_AtlasTextureIndex: 0
-  m_IsMultiAtlasTexturesEnabled: 0
+  m_IsMultiAtlasTexturesEnabled: 1
   m_ClearDynamicDataOnBuild: 0
   m_UsedGlyphRects:
   - m_X: 0
@@ -2490,7 +2490,10 @@ MonoBehaviour:
   m_FontFeatureTable:
     m_GlyphPairAdjustmentRecords: []
   fallbackFontAssets: []
-  m_FallbackFontAssetTable: []
+  m_FallbackFontAssetTable:
+  - {fileID: 11400000, guid: a9f1a7cd6e6789847bc4bdc02fcb55eb, type: 2}
+  - {fileID: 11400000, guid: 4a8416c4531cc4a4d9d47b4d85240422, type: 2}
+  - {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_CreationSettings:
     sourceFontFileName: 
     sourceFontFileGUID: 0566717e10f0fb64780e4c5c76f53ff0

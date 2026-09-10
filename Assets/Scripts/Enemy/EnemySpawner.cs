@@ -366,7 +366,7 @@ public sealed class EnemySpawner : MonoBehaviour
             yield break;
         }
 
-        arenaGate.OpenExit();
+        yield return arenaGate.PlayExitOpening();
         while (runId == levelRunId && !arenaGate.HasPlayerExited)
         {
             yield return null;
