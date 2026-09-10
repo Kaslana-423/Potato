@@ -7,6 +7,7 @@ public sealed class RunSaveController : MonoBehaviour
 
     private EnemySpawner spawner;
     private PlayerHealth playerHealth;
+    private CharacterCombatRuntime characterCombatRuntime;
     private PlayerExperience playerExperience;
     private PlayerLootCrateInventory crateInventory;
     private PlayerWallet wallet;
@@ -59,6 +60,8 @@ public sealed class RunSaveController : MonoBehaviour
                 }
             }
         }
+
+        characterCombatRuntime?.InitializeFromCharacterId(saveData.characterId);
 
         if (playerHealth != null)
         {
@@ -190,6 +193,7 @@ public sealed class RunSaveController : MonoBehaviour
         if (PlayerStats.Instance != null)
         {
             playerHealth = PlayerStats.Instance.GetComponent<PlayerHealth>();
+            characterCombatRuntime = PlayerStats.Instance.GetComponent<CharacterCombatRuntime>();
         }
 
         if (playerHealth == null)

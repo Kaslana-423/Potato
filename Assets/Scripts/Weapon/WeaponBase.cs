@@ -23,6 +23,7 @@ public abstract class WeaponBase : MonoBehaviour
     protected Vector3 aimDirection = Vector3.right;
     protected float currentCooldown = 0f;
     protected bool isAttacking = false;
+    private CharacterCombatRuntime characterCombatRuntime;
     private int attackSequence;
     private ShopWeaponDefinition runtimeDefinition;
     private float runtimeBaseDamageBonus;
@@ -34,6 +35,7 @@ public abstract class WeaponBase : MonoBehaviour
     protected virtual void Awake()
     {
         targetingSystem = GetComponentInParent<PlayerTargeting>();
+        characterCombatRuntime = GetComponentInParent<CharacterCombatRuntime>();
     }
 
     protected virtual void Update()
@@ -81,11 +83,22 @@ public abstract class WeaponBase : MonoBehaviour
             {
                 flatDamage += GetFlatDamageBonus(stats);
             }
-
-            flatDamage *= 1f + stats.Damage / 100f;
         }
 
-        float damage = Mathf.Ceil(Mathf.Max(0f, flatDamage));
+        float calculatedDamage;
+        if (characterCombatRuntime != null)
+        {
+            calculatedDamage = characterCombatRuntime.CalculateDamage(flatDamage, stats, this);
+        }
+        else
+        {
+            float damageMultiplier = stats != null
+                ? Mathf.Max(0f, 1f + stats.Damage / 100f)
+                : 1f;
+            calculatedDamage = flatDamage * damageMultiplier;
+        }
+
+        float damage = Mathf.Ceil(Mathf.Max(0f, calculatedDamage));
         float critChance = (runtimeDefinition != null ? runtimeDefinition.CritChance : 0f)
             + (stats != null ? stats.CritChance : 0f);
         if (critChance > 0f && Random.value < Mathf.Clamp01(critChance / 100f))

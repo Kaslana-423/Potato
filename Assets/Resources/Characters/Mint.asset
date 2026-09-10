@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 57704df15b0e4a108f7612796cd3e8bd, type: 3}
-  m_Name: Potato
+  m_Name: Mint
   m_EditorClassIdentifier: 
   id: character.potato
   displayOrder: 0
@@ -18,8 +18,12 @@ MonoBehaviour:
   unlocked: 1
   displayName: "\u8584\u8377"
   typeLabel: "\u5747\u8861\u578B"
-  description: "\u6CA1\u6709\u989D\u5916\u5C5E\u6027\u4FEE\u6B63\n\u9002\u5408\u719F\u6089\u6E38\u620F\u6D41\u7A0B"
+  description: "\u79FB\u52A8\u8D8A\u5FEB\uFF0C\u653B\u51FB\u8D8A\u5F3A\n\u521D\u59CB\u589E\u52A010%\u79FB\u901F"
   portrait: {fileID: 21300000, guid: 1f02193e1b56ba645a6d447322342ce4, type: 3}
   startingWeaponId: weapon.stick.tier_1
   startingWeaponDisplayName: "\u6728\u68CD"
-  startingStatModifiers: []
+  startingStatModifiers:
+  - statId: 14
+    amount: 10
+  abilities:
+  - {fileID: 11400000, guid: d4619b5290314f40b172ac32c238fd0a, type: 2}

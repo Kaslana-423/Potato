@@ -12,6 +12,7 @@ public class PlayerController : MonoBehaviour
 
     private Rigidbody2D rb;
     private Collider2D bodyCollider;
+    private PlayerStats playerStats;
     private Vector2 movement;
     private bool controlEnabled = true;
     private bool boundaryEnabled = true;
@@ -22,10 +23,20 @@ public class PlayerController : MonoBehaviour
     // 暴露输入方向，用于立即翻转贴图朝向，比读 velocity 响应更干脆
     public Vector2 InputDirection => movement;
 
+    public float EffectiveMoveSpeed
+    {
+        get
+        {
+            float speedBonus = playerStats != null ? playerStats.Speed : 0f;
+            return Mathf.Max(0f, moveSpeed * Mathf.Max(0f, 1f + speedBonus / 100f));
+        }
+    }
+
     void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
         bodyCollider = GetComponent<Collider2D>();
+        playerStats = GetComponent<PlayerStats>();
         rb.gravityScale = 0f;
         rb.constraints |= RigidbodyConstraints2D.FreezeRotation;
         rb.rotation = 0f;
@@ -56,7 +67,8 @@ public class PlayerController : MonoBehaviour
 
         // 把碰撞体整体留在墙内，也防止旧存档或碰撞修正把玩家留在场外。
         Vector2 position = ClampPosition(rb.position);
-        Vector2 nextPosition = ClampPosition(position + movement.normalized * moveSpeed * Time.fixedDeltaTime);
+        Vector2 nextPosition = ClampPosition(
+            position + movement.normalized * EffectiveMoveSpeed * Time.fixedDeltaTime);
         if (position != rb.position)
         {
             rb.position = position;

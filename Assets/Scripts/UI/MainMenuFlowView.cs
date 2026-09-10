@@ -365,7 +365,7 @@ public sealed class MainMenuFlowView : MonoBehaviour
         SetText(characterNameText, character.DisplayName);
         SetText(characterTypeText, character.TypeLabel);
         SetText(characterWeaponText, $"初始武器：{ResolveStartingWeaponName(character)}");
-        SetText(characterDescriptionText, character.Description);
+        SetText(characterDescriptionText, character.BuildSelectionDescription());
         SetCharacterPortrait(character.Portrait);
         SetCharacterPageDots(characters.Count, normalizedIndex);
         SetCharacterNavigationState(characters.Count, character.Unlocked);

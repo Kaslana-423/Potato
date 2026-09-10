@@ -32,6 +32,9 @@ public sealed class CharacterDefinition : ScriptableObject
     [SerializeField] private string startingWeaponDisplayName = "木棍";
     [SerializeField] private List<CharacterStatModifier> startingStatModifiers = new List<CharacterStatModifier>();
 
+    [Header("Unique Abilities")]
+    [SerializeField] private List<CharacterAbilityDefinition> abilities = new List<CharacterAbilityDefinition>();
+
     public string Id => id;
     public int DisplayOrder => displayOrder;
     public bool VisibleInSelection => visibleInSelection;
@@ -43,11 +46,52 @@ public sealed class CharacterDefinition : ScriptableObject
     public string StartingWeaponId => startingWeaponId;
     public string StartingWeaponDisplayName => startingWeaponDisplayName;
     public IReadOnlyList<CharacterStatModifier> StartingStatModifiers => startingStatModifiers;
+    public IReadOnlyList<CharacterAbilityDefinition> Abilities
+    {
+        get
+        {
+            return abilities != null
+                ? (IReadOnlyList<CharacterAbilityDefinition>)abilities
+                : Array.Empty<CharacterAbilityDefinition>();
+        }
+    }
+
+    public string BuildSelectionDescription()
+    {
+        var lines = new List<string>();
+        if (!string.IsNullOrWhiteSpace(description))
+        {
+            lines.Add(description.Trim());
+        }
+
+        if (abilities != null)
+        {
+            for (int index = 0; index < abilities.Count; index++)
+            {
+                CharacterAbilityDefinition ability = abilities[index];
+                if (ability != null && !string.IsNullOrWhiteSpace(ability.SelectionDescription))
+                {
+                    lines.Add(ability.SelectionDescription.Trim());
+                }
+            }
+        }
+
+        return string.Join("\n", lines);
+    }
 
     private void OnValidate()
     {
         displayOrder = Mathf.Max(0, displayOrder);
         id = id?.Trim();
         startingWeaponId = startingWeaponId?.Trim();
+        if (startingStatModifiers == null)
+        {
+            startingStatModifiers = new List<CharacterStatModifier>();
+        }
+
+        if (abilities == null)
+        {
+            abilities = new List<CharacterAbilityDefinition>();
+        }
     }
 }
