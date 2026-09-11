@@ -933,10 +933,6 @@ public sealed class ShopManager : MonoBehaviour
             }
 
             string effectStatus = hasItemEffectResult ? BuildItemEffectStatus(item, effectResult) : string.Empty;
-            if (content.Kind == ShopContentKind.Weapon)
-            {
-                effectStatus += BuildWeaponCombinationStatus(weaponBag);
-            }
             SetStatus($"已购买 {content.LocalizedDisplayName}，花费 {price} 金币，放入{bagName}。{effectStatus}");
         }
         else
@@ -996,19 +992,6 @@ public sealed class ShopManager : MonoBehaviour
             : "";
 
         return applied + unsupported;
-    }
-
-    private static string BuildWeaponCombinationStatus(WeaponBag bag)
-    {
-        if (bag == null || !bag.LastAddCombined || bag.LastAddedWeapon == null)
-        {
-            return string.Empty;
-        }
-
-        string chainLabel = bag.LastCombinationCount > 1
-            ? $"，连续合成 {bag.LastCombinationCount} 次"
-            : string.Empty;
-        return $" 已自动合成为 {bag.LastAddedWeapon.LocalizedDisplayName}（{bag.LastAddedWeapon.RarityLabel}）{chainLabel}。";
     }
 
     private PlayerWallet ResolvePlayerWallet()

@@ -37,6 +37,8 @@ public sealed class MainMenuFlowView : MonoBehaviour
     [SerializeField] private TMP_Text characterDescriptionText;
     [SerializeField] private Button characterPreviousButton;
     [SerializeField] private Button characterNextButton;
+    [SerializeField] private Button ghostAxeButton;
+    [SerializeField] private Button ghostFlintButton;
     [SerializeField] private Image[] characterPageDots;
     [SerializeField] private Sprite selectedCharacterPageDotSprite;
     [SerializeField] private Sprite unselectedCharacterPageDotSprite;
@@ -55,6 +57,8 @@ public sealed class MainMenuFlowView : MonoBehaviour
     public Button CharacterBackButton => characterBackButton;
     public Button CharacterPreviousButton => characterPreviousButton;
     public Button CharacterNextButton => characterNextButton;
+    public Button GhostAxeButton => ghostAxeButton;
+    public Button GhostFlintButton => ghostFlintButton;
     public int CharacterCount => CharacterCatalog.All.Count;
     public Button FirstSaveSlotButton => saveSlotButtons != null && saveSlotButtons.Length > 0
         ? saveSlotButtons[0]
@@ -122,6 +126,12 @@ public sealed class MainMenuFlowView : MonoBehaviour
         characterNextButton = characterNextButton != null
             ? characterNextButton
             : FindButton("CharacterNextButton");
+        ghostAxeButton = ghostAxeButton != null
+            ? ghostAxeButton
+            : FindButton("GhostAxeButton");
+        ghostFlintButton = ghostFlintButton != null
+            ? ghostFlintButton
+            : FindButton("GhostFlintButton");
         BindCharacterPageDots();
         BindCharacterPageDotSprites();
 
@@ -364,7 +374,7 @@ public sealed class MainMenuFlowView : MonoBehaviour
         CharacterDefinition character = characters[normalizedIndex];
         SetText(characterNameText, character.DisplayName);
         SetText(characterTypeText, character.TypeLabel);
-        SetText(characterWeaponText, $"初始武器：{ResolveStartingWeaponName(character)}");
+        SetText(characterWeaponText, "初始武器：请选择");
         SetText(characterDescriptionText, character.BuildSelectionDescription());
         SetCharacterPortrait(character.Portrait);
         SetCharacterPageDots(characters.Count, normalizedIndex);
@@ -377,6 +387,34 @@ public sealed class MainMenuFlowView : MonoBehaviour
         }
 
         return character;
+    }
+
+    public void SetStartingWeaponSelection(int selectedIndex)
+    {
+        SetWeaponButtonSelected(ghostAxeButton, selectedIndex == 0);
+        SetWeaponButtonSelected(ghostFlintButton, selectedIndex == 1);
+    }
+
+    private static void SetWeaponButtonSelected(Button button, bool selected)
+    {
+        if (button == null)
+        {
+            return;
+        }
+
+        Image background = button.targetGraphic as Image ?? button.GetComponent<Image>();
+        if (background != null)
+        {
+            background.color = selected
+                ? new Color(0.78f, 0.66f, 0.43f, 1f)
+                : Color.white;
+        }
+
+        TMP_Text label = button.GetComponentInChildren<TMP_Text>(true);
+        if (label != null)
+        {
+            label.color = selected ? Color.white : new Color(0.18f, 0.13f, 0.09f, 1f);
+        }
     }
 
     public CharacterDefinition GetCharacter(int index)

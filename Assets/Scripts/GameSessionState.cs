@@ -6,6 +6,8 @@ using UnityEngine;
 public static class GameSessionState
 {
     public const string DefaultCharacterId = "character.potato";
+    public const string GhostAxeStartingWeaponId = "weapon.ghost_axe.tier_1";
+    public const string GhostFlintStartingWeaponId = "weapon.ghost_flint.tier_1";
 
     private const string LegacyActiveRunKey = "potato.session.active";
     private const string LegacyRunDataKey = "potato.session.run_data";
@@ -34,18 +36,25 @@ public static class GameSessionState
     public static GameResolutionMode ResolutionMode => GetSavedResolutionMode();
     public static bool Fullscreen => ResolutionMode == GameResolutionMode.Fullscreen;
     public static string CurrentCharacterId { get; private set; } = DefaultCharacterId;
+    public static string CurrentStartingWeaponId { get; private set; } = GhostAxeStartingWeaponId;
     public static bool IsNewRunPendingInitialization { get; private set; }
     // 直接在编辑器运行战斗场景时，不读取或覆盖历史无槽位存档。
     public static bool IsScenePreview => Application.isEditor && !SaveContext.HasCurrentSave;
 
     public static void BeginNewRun()
     {
-        BeginNewRun(CurrentCharacterId);
+        BeginNewRun(CurrentCharacterId, CurrentStartingWeaponId);
     }
 
     public static void BeginNewRun(string characterId)
     {
+        BeginNewRun(characterId, GhostAxeStartingWeaponId);
+    }
+
+    public static void BeginNewRun(string characterId, string startingWeaponId)
+    {
         CurrentCharacterId = NormalizeCharacterId(characterId);
+        CurrentStartingWeaponId = NormalizeStartingWeaponId(startingWeaponId);
         if (!IsScenePreview)
         {
             DeleteRunSaveFiles();
@@ -243,6 +252,13 @@ public static class GameSessionState
     private static string NormalizeCharacterId(string characterId)
     {
         return string.IsNullOrWhiteSpace(characterId) ? DefaultCharacterId : characterId;
+    }
+
+    private static string NormalizeStartingWeaponId(string startingWeaponId)
+    {
+        return string.Equals(startingWeaponId, GhostFlintStartingWeaponId, StringComparison.OrdinalIgnoreCase)
+            ? GhostFlintStartingWeaponId
+            : GhostAxeStartingWeaponId;
     }
 
     private static void ReplaceRunSaveFile()

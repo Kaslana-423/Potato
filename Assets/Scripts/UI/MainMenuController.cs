@@ -55,6 +55,7 @@ public sealed class MainMenuController : MonoBehaviour
     private int titleInputStartFrame;
     private int selectedSaveSlotIndex;
     private int selectedCharacterIndex;
+    private int selectedStartingWeaponIndex;
     private bool deleteSaveFocused;
     private bool deleteMode;
     private bool hasLastMousePosition;
@@ -318,7 +319,10 @@ public sealed class MainMenuController : MonoBehaviour
             return;
         }
 
-        GameSessionState.BeginNewRun(selectedCharacter.Id);
+        string startingWeaponId = selectedStartingWeaponIndex == 1
+            ? GameSessionState.GhostFlintStartingWeaponId
+            : GameSessionState.GhostAxeStartingWeaponId;
+        GameSessionState.BeginNewRun(selectedCharacter.Id, startingWeaponId);
         LoadGameplayScene();
     }
 
@@ -952,7 +956,9 @@ public sealed class MainMenuController : MonoBehaviour
 
         int savedCharacterIndex = CharacterCatalog.IndexOf(GameSessionState.CurrentCharacterId);
         selectedCharacterIndex = savedCharacterIndex >= 0 ? savedCharacterIndex : 0;
+        selectedStartingWeaponIndex = 0;
         ApplyCharacterSelection();
+        navigationView?.SetStartingWeaponSelection(selectedStartingWeaponIndex);
     }
 
     private void HandleCharacterSelectInput()
@@ -964,6 +970,15 @@ public sealed class MainMenuController : MonoBehaviour
         else if (Input.GetKeyDown(KeyCode.D) || Input.GetKeyDown(KeyCode.RightArrow))
         {
             MoveCharacterSelection(1);
+        }
+
+        if (Input.GetKeyDown(KeyCode.W) || Input.GetKeyDown(KeyCode.UpArrow))
+        {
+            SelectStartingWeapon(0);
+        }
+        else if (Input.GetKeyDown(KeyCode.S) || Input.GetKeyDown(KeyCode.DownArrow))
+        {
+            SelectStartingWeapon(1);
         }
 
         if (Input.GetKeyDown(KeyCode.Space))
@@ -997,6 +1012,22 @@ public sealed class MainMenuController : MonoBehaviour
     private void ApplyCharacterSelection()
     {
         navigationView?.ShowCharacterSelected(selectedCharacterIndex);
+    }
+
+    private void SelectGhostAxe()
+    {
+        SelectStartingWeapon(0);
+    }
+
+    private void SelectGhostFlint()
+    {
+        SelectStartingWeapon(1);
+    }
+
+    private void SelectStartingWeapon(int index)
+    {
+        selectedStartingWeaponIndex = Mathf.Clamp(index, 0, 1);
+        navigationView?.SetStartingWeaponSelection(selectedStartingWeaponIndex);
     }
 
     private void SelectSaveSlot2()
@@ -1261,6 +1292,8 @@ public sealed class MainMenuController : MonoBehaviour
         AddListener(navigationView != null ? navigationView.SaveSelectBackButton : null, CloseSaveSelect);
         AddListener(navigationView != null ? navigationView.CharacterPreviousButton : null, SelectPreviousCharacter);
         AddListener(navigationView != null ? navigationView.CharacterNextButton : null, SelectNextCharacter);
+        AddListener(navigationView != null ? navigationView.GhostAxeButton : null, SelectGhostAxe);
+        AddListener(navigationView != null ? navigationView.GhostFlintButton : null, SelectGhostFlint);
         AddListener(navigationView != null ? navigationView.CharacterStartButton : null, StartSelectedCharacter);
         AddListener(navigationView != null ? navigationView.CharacterBackButton : null, CloseCharacterSelect);
         AddListener(startButton, SelectStartMainAction);
@@ -1291,6 +1324,8 @@ public sealed class MainMenuController : MonoBehaviour
         RemoveListener(navigationView != null ? navigationView.SaveSelectBackButton : null, CloseSaveSelect);
         RemoveListener(navigationView != null ? navigationView.CharacterPreviousButton : null, SelectPreviousCharacter);
         RemoveListener(navigationView != null ? navigationView.CharacterNextButton : null, SelectNextCharacter);
+        RemoveListener(navigationView != null ? navigationView.GhostAxeButton : null, SelectGhostAxe);
+        RemoveListener(navigationView != null ? navigationView.GhostFlintButton : null, SelectGhostFlint);
         RemoveListener(navigationView != null ? navigationView.CharacterStartButton : null, StartSelectedCharacter);
         RemoveListener(navigationView != null ? navigationView.CharacterBackButton : null, CloseCharacterSelect);
         RemoveListener(startButton, SelectStartMainAction);

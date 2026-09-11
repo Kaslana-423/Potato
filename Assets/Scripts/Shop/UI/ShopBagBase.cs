@@ -168,7 +168,12 @@ public abstract class ShopBagBase : MonoBehaviour
         {
             int contentIndex = currentPage * slotViews.Length + index;
             ShopContentDefinition content = contentIndex < Count ? contents[contentIndex] : null;
-            slotViews[index].Bind(content, content != null ? GetFallbackIcon(content) : null, detailPopup);
+            slotViews[index].Bind(
+                content,
+                content != null ? GetFallbackIcon(content) : null,
+                detailPopup,
+                this,
+                contentIndex);
         }
         if (previousPageButton != null) previousPageButton.interactable = currentPage > 0;
         if (nextPageButton != null) nextPageButton.interactable = currentPage + 1 < PageCount;
@@ -194,6 +199,12 @@ public abstract class ShopBagBase : MonoBehaviour
     }
 
     protected abstract bool CanAdd(ShopContentDefinition content, out string failureReason);
+
+    protected void CommitContentsChange()
+    {
+        RebuildSlotViews();
+        ContentsChanged?.Invoke();
+    }
 
     protected virtual Sprite GetFallbackIcon(ShopContentDefinition content)
     {

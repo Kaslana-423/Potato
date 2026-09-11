@@ -110,10 +110,18 @@ public static class CharacterSelectSceneAssembler
             ConfigureHeading(panel.transform, heading, font);
             Image characterImage = ConfigureCharacterImage(panel.transform);
             ConfigureCharacterInformation(panel.transform, font);
+            Button ghostAxeButton = ConfigureStartingWeaponButton(
+                "GhostAxeButton", "虚灵斧", panel.transform, font,
+                new Vector2(0.515f, 0.405f), new Vector2(0.635f, 0.475f));
+            Button ghostFlintButton = ConfigureStartingWeaponButton(
+                "GhostFlintButton", "燧石", panel.transform, font,
+                new Vector2(0.65f, 0.405f), new Vector2(0.77f, 0.475f));
             ConfigureCharacterNavigation(panel.transform, font);
             Button startButton = ConfigureStartButton(flowView.CharacterStartButton, panel.transform, font);
             Button backButton = ConfigureBackButton(panel.transform, font);
-            ConfigureReferences(controller, flowView, panel, characterImage, startButton, backButton);
+            ConfigureReferences(
+                controller, flowView, panel, characterImage, startButton, backButton,
+                ghostAxeButton, ghostFlintButton);
 
             Transform oldSpacer = FindDirectChild(panel.transform, "Spacer");
             if (oldSpacer != null)
@@ -229,7 +237,7 @@ public static class CharacterSelectSceneAssembler
             new Vector2(0.525f, 0.575f), new Vector2(0.66f, 0.625f));
 
         TMP_Text weapon = EnsureText("CharacterWeaponText", panel, font);
-        ConfigureText(weapon, "初始武器：木棍", 31f, TextAlignmentOptions.Left,
+        ConfigureText(weapon, "初始武器：请选择（↑/↓）", 31f, TextAlignmentOptions.Left,
             new Vector2(0.515f, 0.495f), new Vector2(0.77f, 0.56f));
 
         Transform divider = EnsureRectObject("CharacterInfoDividerMask", panel);
@@ -239,7 +247,20 @@ public static class CharacterSelectSceneAssembler
         TMP_Text description = FindChild(panel, "CharacterDescriptionText")?.GetComponent<TMP_Text>();
         description = description != null ? description : EnsureText("CharacterDescriptionText", panel, font);
         ConfigureText(description, "没有额外属性修正\n适合熟悉游戏流程", 28f, TextAlignmentOptions.TopLeft,
-            new Vector2(0.515f, 0.35f), new Vector2(0.77f, 0.465f));
+            new Vector2(0.515f, 0.29f), new Vector2(0.77f, 0.39f));
+    }
+
+    private static Button ConfigureStartingWeaponButton(
+        string objectName,
+        string label,
+        Transform panel,
+        TMP_FontAsset font,
+        Vector2 anchorMin,
+        Vector2 anchorMax)
+    {
+        Button button = EnsureButton(objectName, panel);
+        ConfigureWhiteButton(button, label, font, anchorMin, anchorMax, 34f);
+        return button;
     }
 
     private static void ConfigureCharacterNavigation(Transform panel, TMP_FontAsset font)
@@ -295,7 +316,9 @@ public static class CharacterSelectSceneAssembler
         GameObject panel,
         Image characterImage,
         Button startButton,
-        Button backButton)
+        Button backButton,
+        Button ghostAxeButton,
+        Button ghostFlintButton)
     {
         SerializedObject serializedFlow = new SerializedObject(flowView);
         serializedFlow.FindProperty("characterSelectPanel").objectReferenceValue = panel;
@@ -309,6 +332,8 @@ public static class CharacterSelectSceneAssembler
         serializedFlow.FindProperty("characterDescriptionText").objectReferenceValue = FindChild(panel.transform, "CharacterDescriptionText")?.GetComponent<TMP_Text>();
         serializedFlow.FindProperty("characterPreviousButton").objectReferenceValue = FindChild(panel.transform, "CharacterPreviousButton")?.GetComponent<Button>();
         serializedFlow.FindProperty("characterNextButton").objectReferenceValue = FindChild(panel.transform, "CharacterNextButton")?.GetComponent<Button>();
+        serializedFlow.FindProperty("ghostAxeButton").objectReferenceValue = ghostAxeButton;
+        serializedFlow.FindProperty("ghostFlintButton").objectReferenceValue = ghostFlintButton;
         serializedFlow.FindProperty("selectedCharacterPageDotSprite").objectReferenceValue = LoadSprite(SelectedPageDotTexturePath, SelectedPageDotSpriteName);
         serializedFlow.FindProperty("unselectedCharacterPageDotSprite").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>(UnselectedPageDotSpritePath);
 

@@ -22462,7 +22462,7 @@ GameObject:
   - component: {fileID: 8391351525416307330}
   - component: {fileID: 238487659618602173}
   m_Layer: 5
-  m_Name: Sell Button
+  m_Name: Recycle Button
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -27962,7 +27962,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "\u552E\u51FA"
+  m_text: "\u56DE\u6536"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 4a8416c4531cc4a4d9d47b4d85240422, type: 2}
   m_sharedMaterial: {fileID: 5245228677650266942, guid: 4a8416c4531cc4a4d9d47b4d85240422,
@@ -36691,6 +36691,9 @@ MonoBehaviour:
   metaText: {fileID: 7700000000000000012}
   detailsText: {fileID: 7700000000000000016}
   closeButton: {fileID: 7700000000000000021}
+  combineButton: {fileID: 7430757509749850081}
+  recycleButton: {fileID: 238487659618602173}
+  recycleValueText: {fileID: 9172188865500015098}
 --- !u!1 &7700000000000000027
 GameObject:
   m_ObjectHideFlags: 0
@@ -56052,7 +56055,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 122
+  m_text: 0
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}

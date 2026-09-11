@@ -12,9 +12,6 @@ public sealed class WeaponBag : ShopBagBase, IPlayerWeaponLoadout
 
     public int MaxWeapons => maxWeapons;
     public bool IsFull => Count >= maxWeapons;
-    public ShopWeaponDefinition LastAddedWeapon { get; private set; }
-    public int LastCombinationCount { get; private set; }
-    public bool LastAddCombined => LastCombinationCount > 0;
     public int WeaponCount => Count;
 
     event Action IPlayerWeaponLoadout.Changed
@@ -62,6 +59,11 @@ public sealed class WeaponBag : ShopBagBase, IPlayerWeaponLoadout
 
     private string ResolveStartingWeaponId()
     {
+        if (!string.IsNullOrWhiteSpace(GameSessionState.CurrentStartingWeaponId))
+        {
+            return GameSessionState.CurrentStartingWeaponId;
+        }
+
         CharacterDefinition character = CharacterCatalog.FindById(GameSessionState.CurrentCharacterId);
         return character != null && !string.IsNullOrWhiteSpace(character.StartingWeaponId)
             ? character.StartingWeaponId
@@ -107,60 +109,108 @@ public sealed class WeaponBag : ShopBagBase, IPlayerWeaponLoadout
         failureReason = string.Empty;
         if (content.Kind != ShopContentKind.Weapon)
         {
-            failureReason = "这个商品不是武器，不能放入武器背包。";
+            failureReason = "这件商品不是武器，无法放入武器背包。";
             return false;
         }
 
-        ShopWeaponDefinition weapon = content as ShopWeaponDefinition;
-        if (IsFull && (weapon == null || !CanCombine(weapon)))
+        if (IsFull)
         {
-            failureReason = $"武器背包已满（{Count}/{maxWeapons}）。";
+            failureReason = $"武器背包已满（{Count}/{maxWeapons}），请先合成或回收武器。";
             return false;
         }
 
         return true;
     }
 
-    protected override void StoreContent(ShopContentDefinition content)
+    public bool CanCombineAt(int selectedIndex, out string failureReason)
     {
-        ShopWeaponDefinition pendingWeapon = content as ShopWeaponDefinition;
-        LastAddedWeapon = pendingWeapon;
-        LastCombinationCount = 0;
-        if (pendingWeapon == null)
+        failureReason = string.Empty;
+        ShopWeaponDefinition selectedWeapon = GetWeapon(selectedIndex);
+        if (selectedWeapon == null)
         {
-            base.StoreContent(content);
-            return;
+            failureReason = "没有选中可合成的武器。";
+            return false;
         }
 
-        while (TryFindMatchingWeaponIndex(pendingWeapon, out int matchingIndex)
-            && TryFindUpgrade(pendingWeapon, out ShopWeaponDefinition upgradedWeapon))
+        if (!TryFindUpgrade(selectedWeapon, out _))
         {
-            MutableContents.RemoveAt(matchingIndex);
-            pendingWeapon = upgradedWeapon;
-            LastCombinationCount++;
+            failureReason = "该武器已经达到最高品质。";
+            return false;
         }
 
-        LastAddedWeapon = pendingWeapon;
-        if (!LastAddCombined)
+        if (!TryFindMatchingWeaponIndex(selectedWeapon, selectedIndex, out _))
         {
-            base.StoreContent(content);
-            return;
+            failureReason = "需要另一把同类型、同品质的武器。";
+            return false;
         }
 
-        MutableContents.Add(pendingWeapon);
-        RebuildSlotViews();
+        return true;
     }
 
-    private bool CanCombine(ShopWeaponDefinition weapon)
+    public bool TryCombineAt(
+        int selectedIndex,
+        out ShopWeaponDefinition upgradedWeapon,
+        out int upgradedIndex,
+        out string failureReason)
     {
-        return TryFindMatchingWeaponIndex(weapon, out _)
-            && TryFindUpgrade(weapon, out _);
+        upgradedWeapon = null;
+        upgradedIndex = -1;
+        if (!CanCombineAt(selectedIndex, out failureReason))
+        {
+            return false;
+        }
+
+        ShopWeaponDefinition selectedWeapon = GetWeapon(selectedIndex);
+        TryFindMatchingWeaponIndex(selectedWeapon, selectedIndex, out int matchingIndex);
+        TryFindUpgrade(selectedWeapon, out upgradedWeapon);
+
+        int firstIndex = Mathf.Min(selectedIndex, matchingIndex);
+        int secondIndex = Mathf.Max(selectedIndex, matchingIndex);
+        MutableContents[firstIndex] = upgradedWeapon;
+        MutableContents.RemoveAt(secondIndex);
+        upgradedIndex = firstIndex;
+        CommitContentsChange();
+        return true;
     }
 
-    private bool TryFindMatchingWeaponIndex(ShopWeaponDefinition weapon, out int matchingIndex)
+    public bool TryRecycleAt(
+        int selectedIndex,
+        out ShopWeaponDefinition recycledWeapon,
+        out int refund,
+        out string failureReason)
+    {
+        recycledWeapon = GetWeapon(selectedIndex);
+        refund = 0;
+        failureReason = string.Empty;
+        if (recycledWeapon == null)
+        {
+            failureReason = "没有选中可回收的武器。";
+            return false;
+        }
+
+        refund = CalculateRecycleValue(recycledWeapon);
+        MutableContents.RemoveAt(selectedIndex);
+        CommitContentsChange();
+        return true;
+    }
+
+    public static int CalculateRecycleValue(ShopWeaponDefinition weapon)
+    {
+        return weapon == null ? 0 : Mathf.Max(1, Mathf.CeilToInt(weapon.BasePrice * 0.5f));
+    }
+
+    private bool TryFindMatchingWeaponIndex(
+        ShopWeaponDefinition weapon,
+        int excludedIndex,
+        out int matchingIndex)
     {
         for (int index = 0; index < MutableContents.Count; index++)
         {
+            if (index == excludedIndex)
+            {
+                continue;
+            }
+
             ShopWeaponDefinition existingWeapon = MutableContents[index] as ShopWeaponDefinition;
             if (existingWeapon != null
                 && existingWeapon.Rarity == weapon.Rarity
