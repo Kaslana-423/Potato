@@ -475,8 +475,18 @@ public sealed class PlayerStats : MonoBehaviour
 
     private void ApplySelectedCharacterStartingStats()
     {
-        if (!GameSessionState.TryConsumeNewRunCharacter(out string characterId)
-            || !CharacterCatalog.TryGetById(characterId, out CharacterDefinition character))
+        if (!GameSessionState.TryConsumeNewRunCharacter(out string characterId))
+        {
+            if (!GameSessionState.IsScenePreview)
+            {
+                return;
+            }
+
+            // 直接从战斗场景进入 Play Mode 时没有主菜单负责创建新局，使用当前默认角色完成预览初始化。
+            characterId = GameSessionState.CurrentCharacterId;
+        }
+
+        if (!CharacterCatalog.TryGetById(characterId, out CharacterDefinition character))
         {
             return;
         }

@@ -26,4 +26,4 @@ MonoBehaviour:
   - statId: 14
     amount: 10
   abilities:
-  - {fileID: 11400000, guid: d4619b5290314f40b172ac32c238fd0a, type: 2}
+  - {fileID: 11400000, guid: 2cfedd4eccf7ac34f9a5c7ec00799867, type: 2}

@@ -28,6 +28,7 @@ public class PlayerController : MonoBehaviour
         get
         {
             float speedBonus = playerStats != null ? playerStats.Speed : 0f;
+            Debug.Log(speedBonus);
             return Mathf.Max(0f, moveSpeed * Mathf.Max(0f, 1f + speedBonus / 100f));
         }
     }
