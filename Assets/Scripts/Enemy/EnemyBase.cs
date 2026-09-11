@@ -78,12 +78,24 @@ public class EnemyBase : MonoBehaviour
 
     public virtual void TakeDamage(float damage)
     {
+        TakeDamage(damage, false);
+    }
+
+    public virtual void TakeDamage(float damage, bool isCritical)
+    {
         if (dead || !gameObject.activeInHierarchy)
         {
             return;
         }
 
-        currentHealth -= Mathf.Max(0f, damage);
+        float finalDamage = Mathf.Max(0f, damage);
+        if (finalDamage <= 0f)
+        {
+            return;
+        }
+
+        CombatDamageNumberSystem.ShowEnemyDamage(transform.position, finalDamage, isCritical);
+        currentHealth -= finalDamage;
         if (currentHealth <= 0)
         {
             Die();

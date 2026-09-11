@@ -2,6 +2,18 @@ using UnityEngine;
 
 public enum WeaponRarity { Common, Rare, Epic, Legendary }
 
+public readonly struct WeaponDamageRoll
+{
+    public WeaponDamageRoll(float damage, bool isCritical)
+    {
+        Damage = damage;
+        IsCritical = isCritical;
+    }
+
+    public float Damage { get; }
+    public bool IsCritical { get; }
+}
+
 public abstract class WeaponBase : MonoBehaviour
 {
     [Header("基础属性")]
@@ -73,6 +85,11 @@ public abstract class WeaponBase : MonoBehaviour
 
     public virtual float GetAttackDamage()
     {
+        return RollAttackDamage().Damage;
+    }
+
+    public virtual WeaponDamageRoll RollAttackDamage()
+    {
         PlayerStats stats = PlayerStats.Instance;
         float flatDamage = runtimeDefinition != null
             ? runtimeDefinition.CalculateDamage(stats) + runtimeBaseDamageBonus
@@ -99,17 +116,19 @@ public abstract class WeaponBase : MonoBehaviour
         }
 
         float damage = Mathf.Ceil(Mathf.Max(0f, calculatedDamage));
+        bool isCritical = false;
         float critChance = (runtimeDefinition != null ? runtimeDefinition.CritChance : 0f)
             + (stats != null ? stats.CritChance : 0f);
         if (critChance > 0f && Random.value < Mathf.Clamp01(critChance / 100f))
         {
+            isCritical = true;
             float critMultiplier = runtimeDefinition != null
                 ? Mathf.Max(1f, runtimeDefinition.CritMultiplier)
                 : 1.5f;
             damage = Mathf.Ceil(damage * critMultiplier);
         }
 
-        return damage;
+        return new WeaponDamageRoll(damage, isCritical);
     }
 
     public void ConfigureRuntimeDefinition(ShopWeaponDefinition definition, float baseDamageBonus = 0f)

@@ -94,6 +94,7 @@ public sealed class PlayerHealth : MonoBehaviour
         }
 
         nextDamageTime = Time.time + invulnerabilitySeconds;
+        CombatDamageNumberSystem.ShowPlayerDamage(transform.position, actualDamage);
         Damaged?.Invoke(this, actualDamage);
 
         if (currentHealth <= 0)
