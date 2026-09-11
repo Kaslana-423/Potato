@@ -11,8 +11,7 @@ public static class RewardPanelSceneAssembler
 {
     private const string ScenePath = "Assets/Scenes/SampleScene.unity";
     private const string BuildRequestPath = ".codex_reward_ui_request";
-    private const string FontPath = "Assets/TextMesh Pro/Resources/Fonts & Materials/SmileySans-Oblique SDF.asset";
-    private const string StatsPanelPrefabPath = "Assets/Prefebs/PlayerStatsPanel.prefab";
+    private const string FontPath = "Assets/TextMesh Pro/Resources/Fonts & Materials/ShanHaiNiuNaiBoBoW-2 SDF.asset";
 
     private static readonly Color Ink = new Color(0.20f, 0.15f, 0.11f, 1f);
     private static readonly Color Paper = new Color(0.88f, 0.82f, 0.70f, 1f);
@@ -46,7 +45,18 @@ public static class RewardPanelSceneAssembler
         RemoveExistingRoot(scene, "LootCrateRewardCanvas");
 
         TMP_FontAsset font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FontPath);
-        BuildLevelUpCanvas(font);
+        if (font == null)
+        {
+            throw new MissingReferenceException($"Missing reward panel font: {FontPath}");
+        }
+
+        GameObject shopStatsPanel = FindSceneObjectByName(scene, "PlayerStatsPanel");
+        if (shopStatsPanel == null)
+        {
+            throw new MissingReferenceException("SampleScene is missing the shop PlayerStatsPanel.");
+        }
+
+        BuildLevelUpCanvas(font, shopStatsPanel);
         BuildLootCrateCanvas(font);
 
         EditorSceneManager.MarkSceneDirty(scene);
@@ -63,7 +73,7 @@ public static class RewardPanelSceneAssembler
         Debug.Log("Built scene-owned level-up and loot-crate reward panels in SampleScene.");
     }
 
-    private static void BuildLevelUpCanvas(TMP_FontAsset font)
+    private static void BuildLevelUpCanvas(TMP_FontAsset font, GameObject shopStatsPanel)
     {
         GameObject canvasObject = CreateCanvas("LevelUpCanvas", 200);
         LevelUpRewardController controller = canvasObject.AddComponent<LevelUpRewardController>();
@@ -114,16 +124,13 @@ public static class RewardPanelSceneAssembler
         SetRect(divider.GetComponent<RectTransform>(), new Vector2(0.752f, 0.04f), new Vector2(0.754f, 0.96f));
         divider.AddComponent<Image>().color = new Color(0.38f, 0.30f, 0.21f, 1f);
 
-        GameObject statsPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(StatsPanelPrefabPath);
-        if (statsPrefab == null)
-        {
-            throw new MissingReferenceException($"Missing stats panel prefab: {StatsPanelPrefabPath}");
-        }
-        GameObject statsPanel = (GameObject)PrefabUtility.InstantiatePrefab(statsPrefab);
+        GameObject statsPanel = Object.Instantiate(shopStatsPanel);
         statsPanel.name = "UpgradeStatsPanel";
         statsPanel.transform.SetParent(panel.transform, false);
         SetRect((RectTransform)statsPanel.transform, new Vector2(0.765f, 0.035f), new Vector2(0.985f, 0.965f));
         statsPanel.SetActive(true);
+
+        ApplyFontRecursively(canvasObject, font);
 
         controller.AutoBindReferences();
         EditorUtility.SetDirty(controller);
@@ -219,6 +226,8 @@ public static class RewardPanelSceneAssembler
         SetRect(error.rectTransform, new Vector2(0.08f, 0.015f), new Vector2(0.92f, 0.075f));
         error.alignment = TextAlignmentOptions.Center;
 
+        ApplyFontRecursively(canvasObject, font);
+
         controller.AutoBindReferences();
         EditorUtility.SetDirty(controller);
         window.SetActive(false);
@@ -291,6 +300,31 @@ public static class RewardPanelSceneAssembler
     }
 
     private static void Stretch(RectTransform rect) => SetRect(rect, Vector2.zero, Vector2.one);
+
+    private static void ApplyFontRecursively(GameObject root, TMP_FontAsset font)
+    {
+        foreach (TMP_Text text in root.GetComponentsInChildren<TMP_Text>(true))
+        {
+            text.font = font;
+            text.fontSizeMax = 100f;
+            EditorUtility.SetDirty(text);
+        }
+    }
+
+    private static GameObject FindSceneObjectByName(Scene scene, string objectName)
+    {
+        foreach (GameObject root in scene.GetRootGameObjects())
+        {
+            foreach (Transform child in root.GetComponentsInChildren<Transform>(true))
+            {
+                if (child.name == objectName)
+                {
+                    return child.gameObject;
+                }
+            }
+        }
+        return null;
+    }
 
     private static void RemoveExistingRoot(Scene scene, string objectName)
     {
