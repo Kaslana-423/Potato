@@ -4,19 +4,17 @@ using UnityEngine.UI;
 
 public sealed class LootCrateRewardController : MonoBehaviour
 {
-    private const string FontResourcePath = "Fonts & Materials/SmileySans-Oblique SDF";
-
-    private GameObject windowRoot;
-    private Image itemIcon;
-    private TMP_Text iconPlaceholder;
-    private TMP_Text titleText;
-    private TMP_Text rarityText;
-    private TMP_Text detailsText;
-    private TMP_Text pendingText;
-    private TMP_Text recycleButtonText;
-    private TMP_Text errorText;
-    private Button takeButton;
-    private Button recycleButton;
+    [SerializeField] private GameObject windowRoot;
+    [SerializeField] private Image itemIcon;
+    [SerializeField] private TMP_Text iconPlaceholder;
+    [SerializeField] private TMP_Text titleText;
+    [SerializeField] private TMP_Text rarityText;
+    [SerializeField] private TMP_Text detailsText;
+    [SerializeField] private TMP_Text pendingText;
+    [SerializeField] private TMP_Text recycleButtonText;
+    [SerializeField] private TMP_Text errorText;
+    [SerializeField] private Button takeButton;
+    [SerializeField] private Button recycleButton;
     private PlayerLootCrateInventory inventory;
     private ShopManager shopManager;
     private ShopItemDefinition currentReward;
@@ -25,11 +23,16 @@ public sealed class LootCrateRewardController : MonoBehaviour
 
     private void Awake()
     {
-        BuildUi();
+        AutoBindReferences();
+        BindSceneButtons();
+        if (!HasSceneReferences())
+        {
+            Debug.LogError("Loot crate reward UI is missing from SampleScene. Rebuild it with Tools/Potato UI/Build Reward Panels In SampleScene.", this);
+        }
         SetVisible(false);
     }
 
-    public static LootCrateRewardController GetOrCreate()
+    public static LootCrateRewardController FindInScene()
     {
         LootCrateRewardController existing = FindObjectOfType<LootCrateRewardController>(true);
         if (existing != null)
@@ -37,12 +40,18 @@ public sealed class LootCrateRewardController : MonoBehaviour
             return existing;
         }
 
-        GameObject controllerObject = new GameObject("LootCrateRewardController");
-        return controllerObject.AddComponent<LootCrateRewardController>();
+        Debug.LogError("LootCrateRewardController must be placed in the gameplay scene.");
+        return null;
     }
 
     public void BeginRewards(PlayerLootCrateInventory crateInventory, ShopManager manager)
     {
+        if (!HasSceneReferences())
+        {
+            CompleteRewards();
+            return;
+        }
+
         inventory = crateInventory;
         shopManager = manager;
         currentReward = null;
@@ -174,130 +183,62 @@ public sealed class LootCrateRewardController : MonoBehaviour
         }
     }
 
-    private void BuildUi()
+    [ContextMenu("Auto Bind Scene References")]
+    public void AutoBindReferences()
     {
-        TMP_FontAsset font = Resources.Load<TMP_FontAsset>(FontResourcePath);
-        GameObject canvasObject = new GameObject(
-            "LootCrateRewardCanvas",
-            typeof(RectTransform),
-            typeof(Canvas),
-            typeof(CanvasScaler),
-            typeof(GraphicRaycaster));
-        canvasObject.layer = 5;
-        canvasObject.transform.SetParent(transform, false);
-
-        Canvas canvas = canvasObject.GetComponent<Canvas>();
-        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        canvas.sortingOrder = 190;
-        CanvasScaler scaler = canvasObject.GetComponent<CanvasScaler>();
-        ResponsiveUiLayout.ConfigureCanvasScaler(scaler);
-
-        windowRoot = CreateUiObject("LootCrateRewardWindow", canvasObject.transform);
-        Stretch(windowRoot.GetComponent<RectTransform>());
-        Image dimmer = windowRoot.AddComponent<Image>();
-        dimmer.color = new Color(0.015f, 0.018f, 0.025f, 0.9f);
-
-        GameObject panel = CreateUiObject("Panel", windowRoot.transform);
-        ResponsiveUiLayout.SetNormalizedRect(
-            panel.GetComponent<RectTransform>(),
-            new Vector2(0.2552f, 0.1481f),
-            new Vector2(0.7448f, 0.8519f));
-        Image panelImage = panel.AddComponent<Image>();
-        panelImage.color = new Color(0.07f, 0.075f, 0.09f, 0.99f);
-
-        TMP_Text header = CreateText("Header", panel.transform, font, 42f, FontStyles.Bold);
-        SetRect(header.rectTransform, new Vector2(0.05f, 0.89f), new Vector2(0.95f, 0.98f));
-        header.text = "战利品箱";
-        header.alignment = TextAlignmentOptions.Center;
-
-        pendingText = CreateText("Pending", panel.transform, font, 21f, FontStyles.Normal);
-        SetRect(pendingText.rectTransform, new Vector2(0.05f, 0.83f), new Vector2(0.95f, 0.89f));
-        pendingText.alignment = TextAlignmentOptions.Center;
-        pendingText.color = new Color(0.78f, 0.8f, 0.86f, 1f);
-
-        GameObject iconObject = CreateUiObject("ItemIcon", panel.transform);
-        RectTransform iconRect = iconObject.GetComponent<RectTransform>();
-        iconRect.anchorMin = new Vector2(0.08f, 0.52f);
-        iconRect.anchorMax = new Vector2(0.34f, 0.82f);
-        iconRect.offsetMin = Vector2.zero;
-        iconRect.offsetMax = Vector2.zero;
-        itemIcon = iconObject.AddComponent<Image>();
-        itemIcon.preserveAspect = true;
-        itemIcon.raycastTarget = false;
-
-        iconPlaceholder = CreateText("IconPlaceholder", iconObject.transform, font, 96f, FontStyles.Bold);
-        Stretch(iconPlaceholder.rectTransform);
-        iconPlaceholder.alignment = TextAlignmentOptions.Center;
-        iconPlaceholder.color = new Color(0.85f, 0.86f, 0.9f, 1f);
-
-        titleText = CreateText("ItemName", panel.transform, font, 36f, FontStyles.Bold);
-        SetRect(titleText.rectTransform, new Vector2(0.39f, 0.7f), new Vector2(0.92f, 0.82f));
-        titleText.alignment = TextAlignmentOptions.Left;
-
-        rarityText = CreateText("Rarity", panel.transform, font, 23f, FontStyles.Bold);
-        SetRect(rarityText.rectTransform, new Vector2(0.39f, 0.62f), new Vector2(0.92f, 0.7f));
-        rarityText.alignment = TextAlignmentOptions.Left;
-
-        detailsText = CreateText("Details", panel.transform, font, 23f, FontStyles.Normal);
-        SetRect(detailsText.rectTransform, new Vector2(0.08f, 0.27f), new Vector2(0.92f, 0.59f));
-        detailsText.alignment = TextAlignmentOptions.TopLeft;
-        detailsText.enableAutoSizing = true;
-        detailsText.fontSizeMin = 15f;
-        detailsText.fontSizeMax = 23f;
-        detailsText.overflowMode = TextOverflowModes.Ellipsis;
-
-        takeButton = CreateButton(
-            "TakeButton",
-            panel.transform,
-            font,
-            "收下",
-            new Vector2(0.12f, 0.09f),
-            new Vector2(0.46f, 0.21f),
-            new Color(0.18f, 0.58f, 0.24f, 1f),
-            TakeReward,
-            out _);
-
-        recycleButton = CreateButton(
-            "RecycleButton",
-            panel.transform,
-            font,
-            "回收",
-            new Vector2(0.54f, 0.09f),
-            new Vector2(0.88f, 0.21f),
-            new Color(0.58f, 0.36f, 0.14f, 1f),
-            RecycleReward,
-            out recycleButtonText);
-
-        errorText = CreateText("Error", panel.transform, font, 18f, FontStyles.Bold);
-        SetRect(errorText.rectTransform, new Vector2(0.08f, 0.015f), new Vector2(0.92f, 0.075f));
-        errorText.alignment = TextAlignmentOptions.Center;
-        errorText.color = new Color(1f, 0.32f, 0.32f, 1f);
+        windowRoot = FindDescendant("LootCrateRewardWindow")?.gameObject;
+        itemIcon = FindComponent<Image>("ItemIcon");
+        iconPlaceholder = FindComponent<TMP_Text>("IconPlaceholder");
+        titleText = FindComponent<TMP_Text>("ItemName");
+        rarityText = FindComponent<TMP_Text>("Rarity");
+        detailsText = FindComponent<TMP_Text>("Details");
+        pendingText = FindComponent<TMP_Text>("Pending");
+        errorText = FindComponent<TMP_Text>("Error");
+        takeButton = FindComponent<Button>("TakeButton");
+        recycleButton = FindComponent<Button>("RecycleButton");
+        recycleButtonText = recycleButton != null ? recycleButton.GetComponentInChildren<TMP_Text>(true) : null;
     }
 
-    private static Button CreateButton(
-        string objectName,
-        Transform parent,
-        TMP_FontAsset font,
-        string label,
-        Vector2 anchorMin,
-        Vector2 anchorMax,
-        Color color,
-        UnityEngine.Events.UnityAction action,
-        out TMP_Text labelText)
+    private void BindSceneButtons()
     {
-        GameObject buttonObject = CreateUiObject(objectName, parent);
-        SetRect(buttonObject.GetComponent<RectTransform>(), anchorMin, anchorMax);
-        Image image = buttonObject.AddComponent<Image>();
-        image.color = color;
-        Button button = buttonObject.AddComponent<Button>();
-        button.targetGraphic = image;
-        button.onClick.AddListener(action);
+        if (takeButton != null)
+        {
+            takeButton.onClick.RemoveListener(TakeReward);
+            takeButton.onClick.AddListener(TakeReward);
+        }
+        if (recycleButton != null)
+        {
+            recycleButton.onClick.RemoveListener(RecycleReward);
+            recycleButton.onClick.AddListener(RecycleReward);
+        }
+    }
 
-        labelText = CreateText("Text", buttonObject.transform, font, 27f, FontStyles.Bold);
-        Stretch(labelText.rectTransform);
-        labelText.text = label;
-        labelText.alignment = TextAlignmentOptions.Center;
-        return button;
+    private bool HasSceneReferences()
+    {
+        return windowRoot != null && itemIcon != null && iconPlaceholder != null && titleText != null
+            && rarityText != null && detailsText != null && pendingText != null && recycleButtonText != null
+            && errorText != null && takeButton != null && recycleButton != null;
+    }
+
+    private Transform FindDescendant(params string[] names)
+    {
+        foreach (Transform child in GetComponentsInChildren<Transform>(true))
+        {
+            foreach (string objectName in names)
+            {
+                if (child.name == objectName)
+                {
+                    return child;
+                }
+            }
+        }
+        return null;
+    }
+
+    private T FindComponent<T>(params string[] names) where T : Component
+    {
+        Transform child = FindDescendant(names);
+        return child != null ? child.GetComponent<T>() : null;
     }
 
     private static Color GetRarityColor(ShopRarity rarity)
@@ -313,49 +254,6 @@ public sealed class LootCrateRewardController : MonoBehaviour
             default:
                 return Color.white;
         }
-    }
-
-    private static GameObject CreateUiObject(string objectName, Transform parent)
-    {
-        GameObject result = new GameObject(objectName, typeof(RectTransform));
-        result.layer = 5;
-        result.transform.SetParent(parent, false);
-        return result;
-    }
-
-    private static TMP_Text CreateText(
-        string objectName,
-        Transform parent,
-        TMP_FontAsset font,
-        float fontSize,
-        FontStyles style)
-    {
-        GameObject textObject = CreateUiObject(objectName, parent);
-        TMP_Text text = textObject.AddComponent<TextMeshProUGUI>();
-        if (font != null)
-        {
-            text.font = font;
-        }
-
-        text.fontSize = fontSize;
-        text.fontStyle = style;
-        text.color = Color.white;
-        text.raycastTarget = false;
-        text.enableWordWrapping = true;
-        return text;
-    }
-
-    private static void SetRect(RectTransform rect, Vector2 anchorMin, Vector2 anchorMax)
-    {
-        rect.anchorMin = anchorMin;
-        rect.anchorMax = anchorMax;
-        rect.offsetMin = Vector2.zero;
-        rect.offsetMax = Vector2.zero;
-    }
-
-    private static void Stretch(RectTransform rect)
-    {
-        SetRect(rect, Vector2.zero, Vector2.one);
     }
 
 }

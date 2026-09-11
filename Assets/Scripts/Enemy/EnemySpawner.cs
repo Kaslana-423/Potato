@@ -380,7 +380,10 @@ public sealed class EnemySpawner : MonoBehaviour
             && playerExperience.PendingUpgradeCount > 0)
         {
             EnsureLevelUpFlow();
-            levelUpRewardController.BeginRewards(playerExperience, currentWave);
+            if (levelUpRewardController != null)
+            {
+                levelUpRewardController.BeginRewards(playerExperience, currentWave);
+            }
             while (runId == levelRunId
                 && levelUpRewardController != null
                 && levelUpRewardController.IsProcessing)
@@ -397,7 +400,10 @@ public sealed class EnemySpawner : MonoBehaviour
             EnsureLevelUpFlow();
             EnsureShopFlow();
             shopFlow.AutoBind(ref shopManager, shopRoot, ref shopExitButton);
-            lootCrateRewardController.BeginRewards(crateInventory, shopManager);
+            if (lootCrateRewardController != null)
+            {
+                lootCrateRewardController.BeginRewards(crateInventory, shopManager);
+            }
             while (runId == levelRunId
                 && lootCrateRewardController != null
                 && lootCrateRewardController.IsProcessing)
@@ -844,12 +850,12 @@ public sealed class EnemySpawner : MonoBehaviour
 
         if (levelUpRewardController == null)
         {
-            levelUpRewardController = LevelUpRewardController.GetOrCreate();
+            levelUpRewardController = LevelUpRewardController.FindInScene();
         }
 
         if (lootCrateRewardController == null)
         {
-            lootCrateRewardController = LootCrateRewardController.GetOrCreate();
+            lootCrateRewardController = LootCrateRewardController.FindInScene();
         }
     }
 
