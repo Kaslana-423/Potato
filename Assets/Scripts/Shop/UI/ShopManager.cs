@@ -503,6 +503,18 @@ public sealed class ShopManager : MonoBehaviour
             return false;
         }
 
+        PlayerStats rewardPlayerStats = PlayerStats.Instance;
+        if (!ShopItemEffectApplier.CanApply(
+            reward,
+            rewardPlayerStats,
+            out ShopItemEffectResult validationResult))
+        {
+            failureReason = !validationResult.HasPlayerStats
+                ? "未找到玩家属性组件，无法应用箱子道具。"
+                : $"箱子道具包含未支持属性：{string.Join("、", validationResult.UnsupportedStats)}。";
+            return false;
+        }
+
         if (!relicBag.CanAccept(reward, out failureReason)
             || !relicBag.TryAdd(reward, out failureReason))
         {
@@ -510,7 +522,7 @@ public sealed class ShopManager : MonoBehaviour
         }
 
         RegisterPurchase(reward);
-        ShopItemEffectApplier.Apply(reward, PlayerStats.Instance);
+        ShopItemEffectApplier.Apply(reward, rewardPlayerStats);
         UpdateOfferPrices();
         UpdateRefreshButtonLabel();
         return true;
@@ -858,6 +870,20 @@ public sealed class ShopManager : MonoBehaviour
             return;
         }
 
+        ShopItemDefinition itemToPurchase = content as ShopItemDefinition;
+        PlayerStats itemPlayerStats = PlayerStats.Instance;
+        if (!ShopItemEffectApplier.CanApply(
+            itemToPurchase,
+            itemPlayerStats,
+            out ShopItemEffectResult validationResult))
+        {
+            string reason = !validationResult.HasPlayerStats
+                ? "没有找到玩家属性组件"
+                : $"包含未支持属性：{string.Join("、", validationResult.UnsupportedStats)}";
+            SetStatus($"无法购买 {content.LocalizedDisplayName}：{reason}。");
+            return;
+        }
+
         PlayerWallet wallet = ResolvePlayerWallet();
         int price = GetOfferPrice(content);
         if (wallet == null)
@@ -887,11 +913,11 @@ public sealed class ShopManager : MonoBehaviour
             RegisterPurchase(content);
 
             ShopItemEffectResult effectResult = default;
-            ShopItemDefinition item = content as ShopItemDefinition;
+            ShopItemDefinition item = itemToPurchase;
             bool hasItemEffectResult = item != null;
             if (hasItemEffectResult)
             {
-                effectResult = ShopItemEffectApplier.Apply(item, PlayerStats.Instance);
+                effectResult = ShopItemEffectApplier.Apply(item, itemPlayerStats);
                 UpdateOfferPrices();
                 UpdateRefreshButtonLabel();
             }

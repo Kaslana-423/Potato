@@ -64,7 +64,41 @@ public readonly struct ShopItemEffectResult
 
 public static class ShopItemEffectApplier
 {
+    public static bool CanApply(
+        ShopItemDefinition item,
+        PlayerStats playerStats,
+        out ShopItemEffectResult validationResult)
+    {
+        validationResult = Validate(item, playerStats);
+        return item == null
+            || item.Modifiers.Count == 0
+            || validationResult.HasPlayerStats && validationResult.UnsupportedStats.Count == 0;
+    }
+
     public static ShopItemEffectResult Apply(ShopItemDefinition item, PlayerStats playerStats)
+    {
+        ShopItemEffectResult validationResult = Validate(item, playerStats);
+        if (item == null
+            || playerStats == null
+            || validationResult.UnsupportedStats.Count > 0)
+        {
+            return validationResult;
+        }
+
+        int appliedCount = 0;
+        foreach (ItemStatModifier modifier in item.Modifiers)
+        {
+            PlayerStats.TryParseStatId(modifier.StatName, out PlayerStatId statId);
+
+            // 百分比属性在 PlayerStats 中本身以“百分点”整数保存，因此和固定值使用同一加法入口。
+            playerStats.AddStat(statId, Mathf.RoundToInt(modifier.Value));
+            appliedCount++;
+        }
+
+        return new ShopItemEffectResult(appliedCount, Array.Empty<string>(), true);
+    }
+
+    private static ShopItemEffectResult Validate(ShopItemDefinition item, PlayerStats playerStats)
     {
         if (item == null)
         {
@@ -72,31 +106,15 @@ public static class ShopItemEffectApplier
         }
 
         var unsupportedStats = new List<string>();
-        if (playerStats == null)
-        {
-            foreach (ItemStatModifier modifier in item.Modifiers)
-            {
-                AddUnique(unsupportedStats, modifier.StatName);
-            }
-
-            return new ShopItemEffectResult(0, unsupportedStats, false);
-        }
-
-        int appliedCount = 0;
         foreach (ItemStatModifier modifier in item.Modifiers)
         {
-            if (!PlayerStats.TryParseStatId(modifier.StatName, out PlayerStatId statId))
+            if (!PlayerStats.TryParseStatId(modifier.StatName, out _))
             {
                 AddUnique(unsupportedStats, modifier.StatName);
-                continue;
             }
-
-            // 百分比属性在 PlayerStats 中本身以“百分点”整数保存，因此和固定值使用同一加法入口。
-            playerStats.AddStat(statId, Mathf.RoundToInt(modifier.Value));
-            appliedCount++;
         }
 
-        return new ShopItemEffectResult(appliedCount, unsupportedStats, true);
+        return new ShopItemEffectResult(0, unsupportedStats, playerStats != null);
     }
 
     private static void AddUnique(ICollection<string> values, string value)

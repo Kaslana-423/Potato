@@ -4,8 +4,8 @@
 
 - `ShopContentDefinition` 是武器和道具共用的展示模型。
 - `ShopWeaponDefinition` 和 `ShopItemDefinition` 分别保存武器、道具字段。
-- 每个具体武器或道具都有单独脚本，放在 `Content/Definitions` 下。
-- `ShopContentCatalog` 注册手写内容和 XLSX 批量生成内容。
+- 每个具体武器或道具都由 XLSX 生成单独脚本，统一放在 `Generated` 下；不要手改生成文件。
+- `ShopContentCatalog` 只注册 `GeneratedShopContentCatalog` 中的 XLSX 生成内容。
 - `ShopManager` 随机刷新商品，并将数据绑定到 `ShopOfferView`。
 
 图标不是必填项。定义脚本通过 `IconResourcePath` 绑定 `Assets/Resources` 下的 Sprite；
@@ -77,5 +77,11 @@ ShopItem                 Image, Button, ShopOfferView
 
 `Tools > Potato Shop > Generate Scripts From XLSX`
 
-编辑器导入器会为表格中的每一行生成一个脚本到 `Assets/Scripts/Shop/Generated`，
-并重新构建 `GeneratedShopContentCatalog.generated.cs`。
+编辑器导入器会把 `Assets/Scripts/Shop/Generated` 与当前表格做完整同步：为每个有效数据行生成脚本，
+删除表格中已不存在的旧 `.generated.cs`，并重新构建 `GeneratedShopContentCatalog.generated.cs`。
+导入前会先读取并校验两张表；如果文件被占用到无法读取、缺少必需列或存在重复 ID，生成会直接失败，
+并保留原有生成脚本。商店目录只注册生成代码，`items.xlsx` 是道具定义的唯一数据源。
+
+`items.xlsx` 中每个非零属性单元格都必须能映射到现有整数型 `PlayerStats`；未知属性列、无效或非整数数值、
+超出 Tier 1～4 的稀有度、非法价格或限购会让生成失败，避免错误道具进入商店或只应用部分效果。
+道具图片按名称读取 `Resources/IconImage/Items/<道具名小写并以连字符分隔>`。

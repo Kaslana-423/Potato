@@ -22,8 +22,8 @@ Potato 是一个使用 Unity 制作的 2D 俯视角波次生存游戏原型。�
 | **Partial** | 商店商品卡和详情对象预先放在 SampleScene 中；背包通过 `IPlayerWeaponLoadout` 作为武器状态来源，手持武器只重建表现。购买、合成、保存和恢复仍需整体验收 |
 | **Partial** | MainMenu 与 SampleScene 使用同一套纸张风格设置界面，主音量为 10 档整数步进；`bups 2` 与 `ShanHaiNiuNaiBoBoW-2 SDF` 已启用动态多图集并配置回退字体；角色移动时只有 `PlayerSkin` 做纸片式跳动。字体显示和动作手感仍需 Play Mode 确认 |
 | **Partial** | 运行存档能区分战斗、波后和商店阶段，但不能据此宣称精确恢复波内剩余时间、刷怪进度和全部临时对象状态 |
-| **Partial** | 部分属性、武器特殊效果、敌人专属行为和角色配置已有代码或数据，但尚未完成运行时接入与 Play Mode 验收 |
-| **Reference only** | `weapons.xlsx`、`items.xlsx`、生成的定义以及大量敌人资料是开发参考；未通过获取、行为、资源、保存和 Play Mode 验收的条目不会算作可玩内容 |
+| **Partial** | `items.xlsx` 是商店道具的唯一数据源，受支持的结构化属性会生成并应用到 `PlayerStats`；描述中的特殊行为、部分武器效果、敌人专属行为和角色配置仍未全部完成 Play Mode 验收 |
+| **Reference only** | `weapons.xlsx`、未启用的生成定义以及大量敌人资料是开发参考；未通过获取、行为、资源、保存和 Play Mode 验收的条目不会算作可玩内容 |
 | **Out of scope** | 完整复刻原作内容、DLC 敌人、未请求的精英/Boss、多人、在线服务、成就、平台 SDK 和大型框架重写 |
 
 ## 游戏流程
@@ -115,7 +115,7 @@ Build Settings 已按顺序包含 MainMenu 和 SampleScene。
 - 对象池复用会重置状态与事件。
 - 已在 Play Mode 完成对应流程验证。
 
-表格数据可通过 `Tools > Potato Shop > Generate Scripts From XLSX` 更新生成代码。生成结果仍是 **Reference only**，不会因为导入成功自动进入商店或奖励池。
+表格数据可通过 `Tools > Potato Shop > Generate Scripts From XLSX` 更新生成代码。`items.xlsx` 中通过属性校验的道具会进入商店和道具奖励池；描述中的特殊行为仍需完成对应运行时代码和 Play Mode 验收，不能只凭生成成功视为已实现。
 
 ## 文档
 

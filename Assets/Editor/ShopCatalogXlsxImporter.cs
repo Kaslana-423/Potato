@@ -15,32 +15,57 @@ public static class ShopCatalogXlsxImporter
     private const string OutputAssetDirectory = "Assets/Scripts/Shop/Generated";
     private const string RegistryFileName = "GeneratedShopContentCatalog.generated.cs";
 
-    private static readonly string[] ItemStatHeaders =
+    private static readonly string[] RequiredWeaponHeaders =
     {
-        "Max HP",
-        "HP Regeneration",
-        "Life Steal %",
-        "Damage %",
-        "Melee Damage",
-        "Ranged Damage",
-        "Elemental Damage",
-        "Explosion Damage %",
-        "Piercing Damage %",
-        "Attack Speed %",
+        "Name",
+        "Class",
+        "Special Effects",
+        "Tier",
+        "Damage",
+        "Damage Scaling",
+        "Attack Speed (s)",
+        "Crit Mult",
         "Crit Chance %",
-        "Engineering",
         "Range",
-        "Armor",
-        "Dodge %",
-        "Speed %",
-        "Luck",
-        "Harvesting",
         "Knockback",
-        "Pickup Range %",
-        "XP Gain %",
-        "Items Price %",
-        "Curse"
+        "Base price",
+        "Lifesteal %"
     };
+
+    private static readonly string[] RequiredItemHeaders =
+    {
+        "Name",
+        "Rarity",
+        "Effects",
+        "Base Price",
+        "Limit"
+    };
+
+    private static readonly ISet<string> ItemMetadataHeaders =
+        new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "Name",
+            "Rarity",
+            "Effects",
+            "Base Price",
+            "Limit",
+            "Unlocked By",
+            "Tags"
+        };
+
+    private sealed class SpreadsheetData
+    {
+        public SpreadsheetData(
+            IReadOnlyList<string> headers,
+            IReadOnlyList<Dictionary<string, string>> rows)
+        {
+            Headers = headers;
+            Rows = rows;
+        }
+
+        public IReadOnlyList<string> Headers { get; }
+        public IReadOnlyList<Dictionary<string, string>> Rows { get; }
+    }
 
     [MenuItem("Tools/Potato Shop/Generate Scripts From XLSX")]
     public static void GenerateScriptsFromXlsx()
@@ -59,43 +84,72 @@ public static class ShopCatalogXlsxImporter
             return;
         }
 
-        Directory.CreateDirectory(outputDirectory);
-        foreach (string generatedFile in Directory.GetFiles(outputDirectory, "*.generated.cs"))
+        try
         {
-            File.Delete(generatedFile);
+            // 先读取、校验并在内存中完成全部生成，避免 XLSX 被占用或数据异常时清空已有目录。
+            SpreadsheetData weapons = ReadSpreadsheet(weaponsPath);
+            SpreadsheetData items = ReadSpreadsheet(itemsPath);
+            ValidateRequiredHeaders(weapons, RequiredWeaponHeaders, Path.GetFileName(weaponsPath));
+            ValidateRequiredHeaders(items, RequiredItemHeaders, Path.GetFileName(itemsPath));
+
+            var generatedSources = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var registryEntries = new List<string>();
+            var usedClassNames = new HashSet<string>(StringComparer.Ordinal);
+            var usedContentIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            int weaponCount = GenerateWeapons(
+                weapons.Rows,
+                generatedSources,
+                registryEntries,
+                usedClassNames,
+                usedContentIds);
+            int itemCount = GenerateItems(
+                items,
+                generatedSources,
+                registryEntries,
+                usedClassNames,
+                usedContentIds);
+
+            AddGeneratedSource(
+                generatedSources,
+                RegistryFileName,
+                BuildRegistrySource(registryEntries));
+
+            int deletedCount = SynchronizeGeneratedFiles(outputDirectory, generatedSources);
+            string resultMessage =
+                $"Synchronized {weaponCount} weapon scripts and {itemCount} item scripts. "
+                + $"Removed {deletedCount} stale generated scripts.";
+            if (Application.isBatchMode)
+            {
+                Debug.Log(resultMessage);
+            }
+            else
+            {
+                EditorUtility.DisplayDialog("Potato Shop", resultMessage, "OK");
+            }
         }
-
-        var registryEntries = new List<string>();
-        var usedClassNames = new HashSet<string>(StringComparer.Ordinal);
-
-        int weaponCount = GenerateWeapons(weaponsPath, outputDirectory, registryEntries, usedClassNames);
-        int itemCount = GenerateItems(itemsPath, outputDirectory, registryEntries, usedClassNames);
-
-        WriteGeneratedFile(
-            outputDirectory,
-            RegistryFileName,
-            BuildRegistrySource(registryEntries));
-
-        AssetDatabase.Refresh();
-        string resultMessage = $"Generated {weaponCount} weapon scripts and {itemCount} item scripts.";
-        if (Application.isBatchMode)
+        catch (Exception exception)
         {
-            Debug.Log(resultMessage);
-        }
-        else
-        {
-            EditorUtility.DisplayDialog("Potato Shop", resultMessage, "OK");
+            Debug.LogException(exception);
+            if (!Application.isBatchMode)
+            {
+                EditorUtility.DisplayDialog(
+                    "Potato Shop",
+                    $"Generation failed. Existing generated scripts were kept unchanged.\n\n{exception.Message}",
+                    "OK");
+            }
         }
     }
 
     private static int GenerateWeapons(
-        string xlsxPath,
-        string outputDirectory,
+        IReadOnlyList<Dictionary<string, string>> rows,
+        IDictionary<string, string> generatedSources,
         ICollection<string> registryEntries,
-        ISet<string> usedClassNames)
+        ISet<string> usedClassNames,
+        ISet<string> usedContentIds)
     {
         int count = 0;
-        foreach (Dictionary<string, string> row in ReadRows(xlsxPath))
+        foreach (Dictionary<string, string> row in rows)
         {
             string name = Get(row, "Name");
             if (string.IsNullOrWhiteSpace(name))
@@ -108,6 +162,7 @@ public static class ShopCatalogXlsxImporter
                 $"{ToIdentifier(name)}Tier{tier}GeneratedWeapon",
                 usedClassNames);
             string id = $"weapon.{ToSlug(name)}.tier_{tier}";
+            AddContentId(usedContentIds, id, "weapons.xlsx");
 
             var source = new StringBuilder();
             source.AppendLine($"public sealed class {className} : ShopWeaponDefinition");
@@ -140,7 +195,7 @@ public static class ShopCatalogXlsxImporter
             }
             source.AppendLine("}");
 
-            WriteGeneratedFile(outputDirectory, $"{className}.generated.cs", source.ToString());
+            AddGeneratedSource(generatedSources, $"{className}.generated.cs", source.ToString());
             registryEntries.Add(className);
             count++;
         }
@@ -215,13 +270,14 @@ public static class ShopCatalogXlsxImporter
     }
 
     private static int GenerateItems(
-        string xlsxPath,
-        string outputDirectory,
+        SpreadsheetData spreadsheet,
+        IDictionary<string, string> generatedSources,
         ICollection<string> registryEntries,
-        ISet<string> usedClassNames)
+        ISet<string> usedClassNames,
+        ISet<string> usedContentIds)
     {
         int count = 0;
-        foreach (Dictionary<string, string> row in ReadRows(xlsxPath))
+        foreach (Dictionary<string, string> row in spreadsheet.Rows)
         {
             string name = Get(row, "Name");
             if (string.IsNullOrWhiteSpace(name))
@@ -229,12 +285,28 @@ public static class ShopCatalogXlsxImporter
                 continue;
             }
 
-            int tier = ParseTier(Get(row, "Rarity"));
+            int tier = ParseRequiredItemTier(Get(row, "Rarity"), name);
+            int basePrice = ParseRequiredNonNegativeItemInt(
+                Get(row, "Base Price"),
+                "Base Price",
+                name,
+                false);
+            int purchaseLimit = ParseRequiredNonNegativeItemInt(
+                Get(row, "Limit"),
+                "Limit",
+                name,
+                true);
             string className = MakeUniqueClassName(
                 $"{ToIdentifier(name)}GeneratedItem",
                 usedClassNames);
             string id = $"item.{ToSlug(name)}";
-            List<string> modifiers = BuildModifierInitializers(row);
+            AddContentId(usedContentIds, id, "items.xlsx");
+            List<string> modifiers = BuildModifierInitializers(row, spreadsheet.Headers);
+            if (modifiers.Count == 0)
+            {
+                throw new InvalidDataException(
+                    $"items.xlsx row '{name}' does not contain any supported non-zero PlayerStats modifier.");
+            }
 
             var source = new StringBuilder();
             source.AppendLine("using System.Collections.Generic;");
@@ -252,13 +324,14 @@ public static class ShopCatalogXlsxImporter
             source.AppendLine($"    public override string Id => {ToLiteral(id)};");
             source.AppendLine($"    public override string DisplayName => {ToLiteral(name)};");
             source.AppendLine($"    public override string Description => {ToLiteral(Get(row, "Effects"))};");
-            source.AppendLine($"    public override int BasePrice => {ParseInt(Get(row, "Base Price"), 0)};");
+            source.AppendLine($"    public override string IconResourcePath => {ToLiteral($"IconImage/Items/{ToSlug(name).Replace('_', '-')}")};");
+            source.AppendLine($"    public override int BasePrice => {basePrice};");
             source.AppendLine($"    public override ShopRarity Rarity => ShopRarity.Tier{tier};");
-            source.AppendLine($"    public override int PurchaseLimit => {ParseInt(Get(row, "Limit"), 0)};");
+            source.AppendLine($"    public override int PurchaseLimit => {purchaseLimit};");
             source.AppendLine("    public override IReadOnlyList<ItemStatModifier> Modifiers => modifiers;");
             source.AppendLine("}");
 
-            WriteGeneratedFile(outputDirectory, $"{className}.generated.cs", source.ToString());
+            AddGeneratedSource(generatedSources, $"{className}.generated.cs", source.ToString());
             registryEntries.Add(className);
             count++;
         }
@@ -266,19 +339,48 @@ public static class ShopCatalogXlsxImporter
         return count;
     }
 
-    private static List<string> BuildModifierInitializers(IReadOnlyDictionary<string, string> row)
+    private static List<string> BuildModifierInitializers(
+        IReadOnlyDictionary<string, string> row,
+        IReadOnlyList<string> headers)
     {
         var modifiers = new List<string>();
-        foreach (string header in ItemStatHeaders)
+        foreach (string header in headers)
         {
-            string rawValue = Get(row, header);
-            if (!TryParseFloat(rawValue, out float value) || Mathf.Approximately(value, 0f))
+            if (string.IsNullOrWhiteSpace(header) || ItemMetadataHeaders.Contains(header))
             {
                 continue;
             }
 
-            bool isPercent = header.Contains("%");
-            string statName = header.Replace(" %", string.Empty);
+            string rawValue = Get(row, header);
+            if (string.IsNullOrWhiteSpace(rawValue))
+            {
+                continue;
+            }
+
+            if (!TryParseFloat(rawValue, out float value))
+            {
+                throw new InvalidDataException(
+                    $"items.xlsx row '{Get(row, "Name")}' has the invalid numeric value '{rawValue}' in column '{header}'.");
+            }
+
+            if (Mathf.Approximately(value, 0f))
+            {
+                continue;
+            }
+
+            if (!Mathf.Approximately(value, Mathf.Round(value)))
+            {
+                throw new InvalidDataException(
+                    $"items.xlsx row '{Get(row, "Name")}' uses the fractional value '{rawValue}' in column '{header}', "
+                    + "but PlayerStats only stores whole numbers.");
+            }
+
+            if (!TryResolveItemStatHeader(header, out string statName, out bool isPercent))
+            {
+                throw new InvalidDataException(
+                    $"items.xlsx row '{Get(row, "Name")}' uses unsupported stat column '{header}'.");
+            }
+
             modifiers.Add(
                 $"new ItemStatModifier({ToLiteral(statName)}, {ToFloatLiteral(value)}, {isPercent.ToString().ToLowerInvariant()})");
         }
@@ -286,6 +388,27 @@ public static class ShopCatalogXlsxImporter
         AppendDescriptionDerivedModifiers(Get(row, "Effects"), modifiers);
 
         return modifiers;
+    }
+
+    private static bool TryResolveItemStatHeader(
+        string header,
+        out string statName,
+        out bool isPercent)
+    {
+        statName = string.Empty;
+        isPercent = false;
+        if (string.IsNullOrWhiteSpace(header) || ItemMetadataHeaders.Contains(header))
+        {
+            return false;
+        }
+
+        string trimmedHeader = header.Trim();
+        isPercent = trimmedHeader.EndsWith("%", StringComparison.Ordinal);
+        statName = isPercent
+            ? trimmedHeader.Substring(0, trimmedHeader.Length - 1).TrimEnd()
+            : trimmedHeader;
+
+        return PlayerStats.TryParseStatId(statName, out _);
     }
 
     private static void AppendDescriptionDerivedModifiers(string effects, ICollection<string> modifiers)
@@ -387,43 +510,68 @@ public static class ShopCatalogXlsxImporter
         }
     }
 
-    private static IEnumerable<Dictionary<string, string>> ReadRows(string xlsxPath)
+    private static SpreadsheetData ReadSpreadsheet(string xlsxPath)
     {
-        using (ZipArchive archive = ZipFile.OpenRead(xlsxPath))
+        // Excel 可能仍保持工作簿打开；先用共享读取取得一致的内存快照，再解析 ZIP 内容。
+        using (var snapshot = new MemoryStream())
         {
-            XNamespace ns = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
-            List<string> sharedStrings = ReadSharedStrings(archive, ns);
-            ZipArchiveEntry sheetEntry = archive.GetEntry("xl/worksheets/sheet1.xml");
-            if (sheetEntry == null)
+            using (var source = new FileStream(
+                xlsxPath,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.ReadWrite | FileShare.Delete))
             {
-                yield break;
+                source.CopyTo(snapshot);
             }
 
-            XDocument sheet;
-            using (Stream stream = sheetEntry.Open())
+            snapshot.Position = 0;
+            using (var archive = new ZipArchive(snapshot, ZipArchiveMode.Read, true))
             {
-                sheet = XDocument.Load(stream);
-            }
-
-            List<XElement> rows = sheet.Descendants(ns + "row").ToList();
-            if (rows.Count == 0)
-            {
-                yield break;
-            }
-
-            Dictionary<int, string> headers = ReadCells(rows[0], sharedStrings, ns);
-            foreach (XElement row in rows.Skip(1))
-            {
-                Dictionary<int, string> cells = ReadCells(row, sharedStrings, ns);
-                var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                foreach (KeyValuePair<int, string> header in headers)
+                XNamespace ns = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
+                List<string> sharedStrings = ReadSharedStrings(archive, ns);
+                ZipArchiveEntry sheetEntry = archive.GetEntry("xl/worksheets/sheet1.xml");
+                if (sheetEntry == null)
                 {
-                    values[header.Value] = cells.TryGetValue(header.Key, out string value)
-                        ? value
-                        : string.Empty;
+                    throw new InvalidDataException(
+                        $"{Path.GetFileName(xlsxPath)} does not contain xl/worksheets/sheet1.xml.");
                 }
 
-                yield return values;
+                XDocument sheet;
+                using (Stream stream = sheetEntry.Open())
+                {
+                    sheet = XDocument.Load(stream);
+                }
+
+                List<XElement> rows = sheet.Descendants(ns + "row").ToList();
+                if (rows.Count == 0)
+                {
+                    throw new InvalidDataException($"{Path.GetFileName(xlsxPath)} has no rows.");
+                }
+
+                Dictionary<int, string> headerCells = ReadCells(rows[0], sharedStrings, ns);
+                List<KeyValuePair<int, string>> orderedHeaders = headerCells
+                    .Where(pair => !string.IsNullOrWhiteSpace(pair.Value))
+                    .OrderBy(pair => pair.Key)
+                    .ToList();
+                ValidateHeadersAreUnique(orderedHeaders, Path.GetFileName(xlsxPath));
+
+                var headers = orderedHeaders.Select(pair => pair.Value.Trim()).ToList();
+                var resultRows = new List<Dictionary<string, string>>(Mathf.Max(0, rows.Count - 1));
+                foreach (XElement row in rows.Skip(1))
+                {
+                    Dictionary<int, string> cells = ReadCells(row, sharedStrings, ns);
+                    var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    foreach (KeyValuePair<int, string> header in orderedHeaders)
+                    {
+                        values[header.Value.Trim()] = cells.TryGetValue(header.Key, out string value)
+                            ? value
+                            : string.Empty;
+                    }
+
+                    resultRows.Add(values);
+                }
+
+                return new SpreadsheetData(headers, resultRows);
             }
         }
     }
@@ -501,6 +649,113 @@ public static class ShopCatalogXlsxImporter
         return result - 1;
     }
 
+    private static void ValidateHeadersAreUnique(
+        IEnumerable<KeyValuePair<int, string>> headers,
+        string workbookName)
+    {
+        var uniqueHeaders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (KeyValuePair<int, string> header in headers)
+        {
+            string normalizedHeader = header.Value.Trim();
+            if (!uniqueHeaders.Add(normalizedHeader))
+            {
+                throw new InvalidDataException(
+                    $"{workbookName} contains the duplicate header '{normalizedHeader}'.");
+            }
+        }
+    }
+
+    private static void ValidateRequiredHeaders(
+        SpreadsheetData spreadsheet,
+        IEnumerable<string> requiredHeaders,
+        string workbookName)
+    {
+        var actualHeaders = new HashSet<string>(spreadsheet.Headers, StringComparer.OrdinalIgnoreCase);
+        string[] missingHeaders = requiredHeaders
+            .Where(header => !actualHeaders.Contains(header))
+            .ToArray();
+        if (missingHeaders.Length > 0)
+        {
+            throw new InvalidDataException(
+                $"{workbookName} is missing required columns: {string.Join(", ", missingHeaders)}.");
+        }
+    }
+
+    private static void AddContentId(ISet<string> usedContentIds, string id, string workbookName)
+    {
+        if (!usedContentIds.Add(id))
+        {
+            throw new InvalidDataException($"{workbookName} produces the duplicate content id '{id}'.");
+        }
+    }
+
+    private static void AddGeneratedSource(
+        IDictionary<string, string> generatedSources,
+        string fileName,
+        string contents)
+    {
+        if (generatedSources.ContainsKey(fileName))
+        {
+            throw new InvalidDataException($"Duplicate generated file name: {fileName}.");
+        }
+
+        generatedSources.Add(fileName, contents);
+    }
+
+    private static int SynchronizeGeneratedFiles(
+        string outputDirectory,
+        IReadOnlyDictionary<string, string> generatedSources)
+    {
+        Directory.CreateDirectory(outputDirectory);
+        var expectedFileNames = new HashSet<string>(generatedSources.Keys, StringComparer.OrdinalIgnoreCase);
+        int deletedCount = 0;
+
+        AssetDatabase.StartAssetEditing();
+        try
+        {
+            foreach (KeyValuePair<string, string> source in generatedSources
+                .Where(pair => !string.Equals(pair.Key, RegistryFileName, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase))
+            {
+                WriteGeneratedFile(outputDirectory, source.Key, source.Value);
+            }
+
+            WriteGeneratedFile(
+                outputDirectory,
+                RegistryFileName,
+                generatedSources[RegistryFileName]);
+
+            foreach (string existingFile in Directory.GetFiles(outputDirectory, "*.generated.cs"))
+            {
+                string fileName = Path.GetFileName(existingFile);
+                if (expectedFileNames.Contains(fileName))
+                {
+                    continue;
+                }
+
+                string assetPath = $"{OutputAssetDirectory}/{fileName}";
+                if (!AssetDatabase.DeleteAsset(assetPath))
+                {
+                    File.Delete(existingFile);
+                    string metaPath = existingFile + ".meta";
+                    if (File.Exists(metaPath))
+                    {
+                        File.Delete(metaPath);
+                    }
+                }
+
+                deletedCount++;
+            }
+        }
+        finally
+        {
+            AssetDatabase.StopAssetEditing();
+        }
+
+        AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+        return deletedCount;
+    }
+
     private static string BuildRegistrySource(IEnumerable<string> classNames)
     {
         var source = new StringBuilder();
@@ -530,10 +785,14 @@ public static class ShopCatalogXlsxImporter
 
     private static void WriteGeneratedFile(string outputDirectory, string fileName, string contents)
     {
-        File.WriteAllText(
-            Path.Combine(outputDirectory, fileName),
-            contents,
-            new UTF8Encoding(false));
+        string outputPath = Path.Combine(outputDirectory, fileName);
+        if (File.Exists(outputPath)
+            && string.Equals(File.ReadAllText(outputPath, Encoding.UTF8), contents, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        File.WriteAllText(outputPath, contents, new UTF8Encoding(false));
     }
 
     private static int ParseTier(string value)
@@ -542,6 +801,42 @@ public static class ShopCatalogXlsxImporter
         return match.Success
             ? Mathf.Clamp(ParseInt(match.Value, 1), 1, 4)
             : 1;
+    }
+
+    private static int ParseRequiredItemTier(string value, string itemName)
+    {
+        Match match = Regex.Match(value ?? string.Empty, @"\d+");
+        if (!match.Success
+            || !int.TryParse(match.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int tier)
+            || tier < 1
+            || tier > 4)
+        {
+            throw new InvalidDataException(
+                $"items.xlsx row '{itemName}' has invalid Rarity '{value}'. Expected Tier 1 through Tier 4.");
+        }
+
+        return tier;
+    }
+
+    private static int ParseRequiredNonNegativeItemInt(
+        string value,
+        string columnName,
+        string itemName,
+        bool allowBlank)
+    {
+        if (allowBlank && string.IsNullOrWhiteSpace(value))
+        {
+            return 0;
+        }
+
+        if (!int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int parsed)
+            || parsed < 0)
+        {
+            throw new InvalidDataException(
+                $"items.xlsx row '{itemName}' has invalid {columnName} '{value}'. Expected a non-negative integer.");
+        }
+
+        return parsed;
     }
 
     private static int ParseInt(string value, int fallback)

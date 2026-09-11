@@ -43,12 +43,6 @@ public static class ShopContentCatalog
         var contents = new List<ShopContentDefinition>();
         var ids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        AddUnique(contents, ids, new AcidItem());
-        AddUnique(contents, ids, new AdrenalineItem());
-        AddUnique(contents, ids, new AlienBabyItem());
-        AddUnique(contents, ids, new AlienMagicItem());
-        AddUnique(contents, ids, new AlienTongueItem());
-
         foreach (ShopContentDefinition generatedContent in GeneratedShopContentCatalog.CreateAll())
         {
             AddUnique(contents, ids, generatedContent);

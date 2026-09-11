@@ -12,6 +12,7 @@ public sealed class AcidGeneratedItem : ShopItemDefinition
     public override string Id => "item.acid";
     public override string DisplayName => "Acid";
     public override string Description => "+8 Max HP -2 % Dodge -2 Knockback";
+    public override string IconResourcePath => "IconImage/Items/acid";
     public override int BasePrice => 65;
     public override ShopRarity Rarity => ShopRarity.Tier2;
     public override int PurchaseLimit => 0;
