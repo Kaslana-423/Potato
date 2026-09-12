@@ -96,17 +96,6 @@ public sealed class CoinPickup : BattlefieldDrop
         PlayerExperience experience = PlayerExperience.GetOrCreate();
         experience?.AddMaterialExperience(collectedValue);
 
-        if (stats != null
-            && stats.MaterialsHealing > 0
-            && Random.value < Mathf.Clamp01(stats.MaterialsHealing / 100f))
-        {
-            PlayerHealth health = stats.GetComponent<PlayerHealth>();
-            if (health != null)
-            {
-                health.Heal(1);
-            }
-        }
-
         Destroy(gameObject);
     }
 

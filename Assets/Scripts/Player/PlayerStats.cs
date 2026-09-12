@@ -19,20 +19,13 @@ public enum PlayerStatId
     Speed = 14,
     Luck = 15,
     ConsumableHeal = 17,
-    MaterialsHealing = 18,
     XpGain = 19,
     PickupRange = 20,
     ItemsPrice = 21,
-    ExplosionDamage = 22,
-    ExplosionSize = 23,
     Bounces = 24,
     Piercing = 25,
     PiercingDamage = 26,
     DamageAgainstBosses = 27,
-    StructureAttackSpeed = 28,
-    StructureRange = 29,
-    BurningSpeed = 30,
-    BurningSpread = 31,
     Knockback = 32,
     DoubleMaterialChance = 33,
     FreeRerolls = 34,
@@ -66,20 +59,13 @@ public sealed class PlayerStats : MonoBehaviour
 
     [Header("次要属性")]
     [SerializeField] private int consumableHeal;
-    [SerializeField] private int materialsHealing;
     [SerializeField] private int xpGain;
     [SerializeField] private int pickupRange;
     [SerializeField] private int itemsPrice;
-    [SerializeField] private int explosionDamage;
-    [SerializeField] private int explosionSize;
     [SerializeField] private int bounces;
     [SerializeField] private int piercing;
     [SerializeField] private int piercingDamage;
     [SerializeField] private int damageAgainstBosses;
-    [SerializeField] private int structureAttackSpeed;
-    [SerializeField] private int structureRange;
-    [SerializeField] private int burningSpeed;
-    [SerializeField] private int burningSpread;
     [SerializeField] private int knockback;
     [SerializeField] private int doubleMaterialChance;
     [SerializeField] private int freeRerolls;
@@ -103,20 +89,13 @@ public sealed class PlayerStats : MonoBehaviour
     public int Speed => speed;
     public int Luck => luck;
     public int ConsumableHeal => consumableHeal;
-    public int MaterialsHealing => materialsHealing;
     public int XpGain => xpGain;
     public int PickupRange => pickupRange;
     public int ItemsPrice => itemsPrice;
-    public int ExplosionDamage => explosionDamage;
-    public int ExplosionSize => explosionSize;
     public int Bounces => bounces;
     public int Piercing => piercing;
     public int PiercingDamage => piercingDamage;
     public int DamageAgainstBosses => damageAgainstBosses;
-    public int StructureAttackSpeed => structureAttackSpeed;
-    public int StructureRange => structureRange;
-    public int BurningSpeed => burningSpeed;
-    public int BurningSpread => burningSpread;
     public int Knockback => knockback;
     public int DoubleMaterialChance => doubleMaterialChance;
     public int FreeRerolls => freeRerolls;
@@ -212,18 +191,12 @@ public sealed class PlayerStats : MonoBehaviour
                 return luck;
             case PlayerStatId.ConsumableHeal:
                 return consumableHeal;
-            case PlayerStatId.MaterialsHealing:
-                return materialsHealing;
             case PlayerStatId.XpGain:
                 return xpGain;
             case PlayerStatId.PickupRange:
                 return pickupRange;
             case PlayerStatId.ItemsPrice:
                 return itemsPrice;
-            case PlayerStatId.ExplosionDamage:
-                return explosionDamage;
-            case PlayerStatId.ExplosionSize:
-                return explosionSize;
             case PlayerStatId.Bounces:
                 return bounces;
             case PlayerStatId.Piercing:
@@ -232,14 +205,6 @@ public sealed class PlayerStats : MonoBehaviour
                 return piercingDamage;
             case PlayerStatId.DamageAgainstBosses:
                 return damageAgainstBosses;
-            case PlayerStatId.StructureAttackSpeed:
-                return structureAttackSpeed;
-            case PlayerStatId.StructureRange:
-                return structureRange;
-            case PlayerStatId.BurningSpeed:
-                return burningSpeed;
-            case PlayerStatId.BurningSpread:
-                return burningSpread;
             case PlayerStatId.Knockback:
                 return knockback;
             case PlayerStatId.DoubleMaterialChance:
@@ -321,9 +286,6 @@ public sealed class PlayerStats : MonoBehaviour
             case PlayerStatId.ConsumableHeal:
                 consumableHeal = value;
                 break;
-            case PlayerStatId.MaterialsHealing:
-                materialsHealing = value;
-                break;
             case PlayerStatId.XpGain:
                 xpGain = value;
                 break;
@@ -332,12 +294,6 @@ public sealed class PlayerStats : MonoBehaviour
                 break;
             case PlayerStatId.ItemsPrice:
                 itemsPrice = value;
-                break;
-            case PlayerStatId.ExplosionDamage:
-                explosionDamage = value;
-                break;
-            case PlayerStatId.ExplosionSize:
-                explosionSize = value;
                 break;
             case PlayerStatId.Bounces:
                 bounces = value;
@@ -350,18 +306,6 @@ public sealed class PlayerStats : MonoBehaviour
                 break;
             case PlayerStatId.DamageAgainstBosses:
                 damageAgainstBosses = value;
-                break;
-            case PlayerStatId.StructureAttackSpeed:
-                structureAttackSpeed = value;
-                break;
-            case PlayerStatId.StructureRange:
-                structureRange = value;
-                break;
-            case PlayerStatId.BurningSpeed:
-                burningSpeed = value;
-                break;
-            case PlayerStatId.BurningSpread:
-                burningSpread = value;
                 break;
             case PlayerStatId.Knockback:
                 knockback = value;
@@ -508,20 +452,13 @@ public sealed class PlayerStats : MonoBehaviour
         return new List<PlayerStatDisplayEntry>
         {
             MakeEntry(PlayerStatId.ConsumableHeal, "消耗品治疗", "疗", consumableHeal, secondaryColor),
-            MakeEntry(PlayerStatId.MaterialsHealing, "材料治疗概率", "材", materialsHealing, secondaryColor),
             MakeEntry(PlayerStatId.XpGain, "经验获取", "经", xpGain, secondaryColor),
             MakeEntry(PlayerStatId.PickupRange, "拾取范围", "拾", pickupRange, secondaryColor),
             MakeEntry(PlayerStatId.ItemsPrice, "物品价格", "价", itemsPrice, secondaryColor),
-            MakeEntry(PlayerStatId.ExplosionDamage, "爆炸伤害", "爆", explosionDamage, secondaryColor),
-            MakeEntry(PlayerStatId.ExplosionSize, "爆炸范围", "域", explosionSize, secondaryColor),
             MakeEntry(PlayerStatId.Bounces, "弹射次数", "弹", bounces, secondaryColor),
             MakeEntry(PlayerStatId.Piercing, "贯穿次数", "贯", piercing, secondaryColor),
             MakeEntry(PlayerStatId.PiercingDamage, "贯穿伤害", "穿", piercingDamage, secondaryColor),
             MakeEntry(PlayerStatId.DamageAgainstBosses, "首领伤害", "首", damageAgainstBosses, secondaryColor),
-            MakeEntry(PlayerStatId.StructureAttackSpeed, "建筑攻击速度", "建", structureAttackSpeed, secondaryColor),
-            MakeEntry(PlayerStatId.StructureRange, "建筑范围", "筑", structureRange, secondaryColor),
-            MakeEntry(PlayerStatId.BurningSpeed, "燃烧速度", "燃", burningSpeed, secondaryColor),
-            MakeEntry(PlayerStatId.BurningSpread, "燃烧扩散", "烧", burningSpread, secondaryColor),
             MakeEntry(PlayerStatId.Knockback, "击退", "击", knockback, secondaryColor),
             MakeEntry(PlayerStatId.DoubleMaterialChance, "双倍材料概率", "双", doubleMaterialChance, secondaryColor),
             MakeEntry(PlayerStatId.FreeRerolls, "免费刷新", "免", freeRerolls, secondaryColor),
@@ -600,10 +537,6 @@ public sealed class PlayerStats : MonoBehaviour
             case "consumablehealing":
                 parsedId = PlayerStatId.ConsumableHeal;
                 return true;
-            case "materialshealing":
-            case "materialhealing":
-                parsedId = PlayerStatId.MaterialsHealing;
-                return true;
             case "xpgain":
             case "experiencegain":
                 parsedId = PlayerStatId.XpGain;
@@ -615,13 +548,6 @@ public sealed class PlayerStats : MonoBehaviour
             case "itemprice":
             case "shopprice":
                 parsedId = PlayerStatId.ItemsPrice;
-                return true;
-            case "explosiondamage":
-                parsedId = PlayerStatId.ExplosionDamage;
-                return true;
-            case "explosionsize":
-            case "explosionrange":
-                parsedId = PlayerStatId.ExplosionSize;
                 return true;
             case "bounces":
             case "bounce":
@@ -637,18 +563,6 @@ public sealed class PlayerStats : MonoBehaviour
             case "damageagainstbosses":
             case "bossdamage":
                 parsedId = PlayerStatId.DamageAgainstBosses;
-                return true;
-            case "structureattackspeed":
-                parsedId = PlayerStatId.StructureAttackSpeed;
-                return true;
-            case "structurerange":
-                parsedId = PlayerStatId.StructureRange;
-                return true;
-            case "burningspeed":
-                parsedId = PlayerStatId.BurningSpeed;
-                return true;
-            case "burningspread":
-                parsedId = PlayerStatId.BurningSpread;
                 return true;
             case "knockback":
                 parsedId = PlayerStatId.Knockback;
@@ -756,18 +670,12 @@ public sealed class PlayerStats : MonoBehaviour
                 return "luck";
             case PlayerStatId.ConsumableHeal:
                 return "consumable_heal";
-            case PlayerStatId.MaterialsHealing:
-                return "materials_healing";
             case PlayerStatId.XpGain:
                 return "xp_gain";
             case PlayerStatId.PickupRange:
                 return "pickup_range";
             case PlayerStatId.ItemsPrice:
                 return "items_price";
-            case PlayerStatId.ExplosionDamage:
-                return "explosion_damage";
-            case PlayerStatId.ExplosionSize:
-                return "explosion_size";
             case PlayerStatId.Bounces:
                 return "bounces";
             case PlayerStatId.Piercing:
@@ -776,14 +684,6 @@ public sealed class PlayerStats : MonoBehaviour
                 return "piercing_damage";
             case PlayerStatId.DamageAgainstBosses:
                 return "damage_against_bosses";
-            case PlayerStatId.StructureAttackSpeed:
-                return "structure_attack_speed";
-            case PlayerStatId.StructureRange:
-                return "structure_range";
-            case PlayerStatId.BurningSpeed:
-                return "burning_speed";
-            case PlayerStatId.BurningSpread:
-                return "burning_spread";
             case PlayerStatId.Knockback:
                 return "knockback";
             case PlayerStatId.DoubleMaterialChance:

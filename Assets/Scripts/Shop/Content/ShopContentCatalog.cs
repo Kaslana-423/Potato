@@ -10,9 +10,25 @@ public static class ShopContentCatalog
         "engineering",
         "harvesting",
         "harvest",
+        "materialshealing",
+        "materialhealing",
+        "explosiondamage",
+        "explosionsize",
+        "explosionrange",
+        "structureattackspeed",
+        "structurerange",
+        "burningspeed",
+        "burningspread",
         "元素伤害",
         "工程学",
-        "收获"
+        "收获",
+        "材料治疗",
+        "爆炸伤害",
+        "爆炸范围",
+        "建筑攻击速度",
+        "建筑范围",
+        "燃烧速度",
+        "燃烧扩散"
     };
 
     private static readonly IReadOnlyList<ShopContentDefinition> all = BuildCatalog();
